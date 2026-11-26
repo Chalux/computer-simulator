@@ -1,0 +1,22 @@
+<Project Sdk="Godot.NET.Sdk/4.7.2">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework Condition="'$(GodotTargetPlatform)' == 'android'">net9.0</TargetFramework>
+    <RootNamespace>ComputerSimulator</RootNamespace>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <DefaultItemExcludes>$(DefaultItemExcludes);Src/frame/mvc/Generators/**</DefaultItemExcludes>
+  </PropertyGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resource/agents/default-agent/builtins/benchmark.mjs" LogicalName="Benchmark.Rules" />
+    <EmbeddedResource Include="Resource/hardware/clearance-bench.json" LogicalName="Clearance.Catalog" />
+    <EmbeddedResource Include="Resource/agents/default-agent/builtins/assembly-fit.mjs" LogicalName="Clearance.Rules" />
+    <ProjectReference Include="Src/frame/mvc/Generators/KemoCard.Mvc.Generators/KemoCard.Mvc.Generators.csproj"
+                      OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <PackageReference Include="Puerts.V8.Complete" Version="3.0.2" />
+    <PackageReference Include="Puerts.Core" Version="3.0.2" GeneratePathProperty="true" />
+    <EmbeddedResource Include="$(PkgPuerts_Core)/contentFiles/puerts/*"
+                      LogicalName="KemoCard.PuertsJs.%(Filename)%(Extension)" />
+  </ItemGroup>
+</Project>

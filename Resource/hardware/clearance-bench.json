@@ -1,0 +1,65 @@
+{
+  "board": {
+    "name": "战未来 M24 · 双通道 DDR5",
+    "dimensions": [244, 244, 2],
+    "slots": [
+      { "name": "A1", "channel": "A", "anchor": [130, 0, 55] },
+      { "name": "A2", "channel": "A", "anchor": [144, 0, 55] },
+      { "name": "B1", "channel": "B", "anchor": [165, 0, 55] },
+      { "name": "B2", "channel": "B", "anchor": [179, 0, 55] }
+    ],
+    "maxRate": 5600, "price": 899, "vrmWatts": 205, "color": "黑", "formFactor": "mATX"
+  },
+  "cooler": {
+    "name": "光谱工坊 D154 ARGB",
+    "body_aabb": [
+      { "origin": [54, 38, 60], "size": [34, 116, 120] },
+      { "origin": [99, 38, 60], "size": [36, 116, 120] }
+    ],
+    "fan_aabb": { "origin": [135, 42, 64], "size": [25, 112, 112] },
+    "adjustable_y_max": 15
+  },
+  "cases": [
+    { "name": "窄体机箱", "heightLimit": 160, "gpuLimit": 365, "psuLimit": 170, "naturalAirflow": 0.40, "price": 399, "color": "黑", "formFactor": "mATX" },
+    { "name": "宽体机箱", "heightLimit": 175, "gpuLimit": 410, "psuLimit": 200, "naturalAirflow": 0.46, "price": 569, "color": "黑", "formFactor": "ATX" }
+  ],
+  "ram": [
+    { "name": "棱镜高马甲", "dimensions": [133, 7, 48], "price": 259, "color": "黑", "lighting": "ARGB", "rgb": true, "gb": 16, "rate": 5600 },
+    { "name": "素面矮马甲", "dimensions": [133, 7, 32], "price": 199, "color": "灰", "lighting": "无", "rgb": false, "gb": 16, "rate": 5600 }
+  ],
+  "graphics": [
+    { "name": "刀法精工 X3", "dimensions": [335, 56, 118], "fanCount": 3, "price": 3799, "performance": 149, "resistance": 0.19, "throttle": 86, "maxFanDb": 44, "color": "黑", "lighting": "ARGB", "testWatts": [40, 320, 365, 448] },
+    { "name": "刀法精工 Twin", "dimensions": [285, 46, 110], "fanCount": 2, "price": 2399, "performance": 104, "resistance": 0.22, "throttle": 86, "maxFanDb": 40, "color": "黑", "lighting": "ARGB", "testWatts": [32, 215, 235, 279] }
+  ],
+  "liquid": { "name": "极光 360 ARGB", "price": 499, "resistance": 0.32, "maxFanDb": 42, "pumpDb": 24, "color": "黑", "lighting": "ARGB", "coreThickness": 27, "fanThickness": 25, "fanSize": 120, "fanCount": 3 },
+  "powerSupplies": [
+    { "name": "稳流 G750", "continuous": 750, "pulse": 900, "recommended": 780, "length": 160, "price": 529, "cable": "全模组", "noiseDb": 26 },
+    { "name": "素装 S550", "continuous": 550, "pulse": 710, "recommended": 615, "length": 150, "price": 349, "cable": "半模组", "noiseDb": 31 },
+    { "name": "烈士墙 Max 700", "continuous": 520, "pulse": 620, "recommended": 570, "length": 165, "price": 199, "cable": "非模组", "noiseDb": 34 }
+  ],
+  "loadCurve": [
+    { "name": "空闲", "cpu": 40, "other": 46, "pulse": false },
+    { "name": "持续满载", "cpu": 125, "other": 55, "pulse": false },
+    { "name": "处理器加速脉冲", "cpu": 175, "other": 55, "pulse": true },
+    { "name": "显卡瞬时脉冲", "cpu": 147, "other": 55, "pulse": true }
+  ],
+  "processor": { "name": "战未来 R7", "price": 1299, "performance": 120, "throttle": 90 },
+  "storage": { "name": "1 TB NVMe", "price": 369 },
+  "benchmark": {
+    "ambient": 25,
+    "referenceBandwidth": 89.6,
+    "airflows": [
+      { "name": "均衡进排风", "intake": 55, "exhaust": 52, "caseNoise": 28 },
+      { "name": "仅进风", "intake": 55, "exhaust": 0, "caseNoise": 28 },
+      { "name": "辅助风扇停转", "intake": 0, "exhaust": 0, "caseNoise": null }
+    ],
+    "workloads": [
+      { "name": "1080p 高刷游戏", "computeWeights": [0.50, 0.27, 0.23], "weights": [0.32, 0.22, 0.12, 0.12, 0.07, 0.15],
+        "referenceRoi": 0.014, "targetMargin": 20, "targetNoise": 36 },
+      { "name": "4K 游戏", "computeWeights": [0.18, 0.71, 0.11], "weights": [0.46, 0.12, 0.14, 0.08, 0.06, 0.14],
+        "referenceRoi": 0.015, "targetMargin": 15, "targetNoise": 39 }
+    ]
+  },
+  "cpuMaxRate": 5600,
+  "initial": { "caseIndex": 0, "ramIndex": 0, "slots": [1, 3], "offset": 0 }
+}

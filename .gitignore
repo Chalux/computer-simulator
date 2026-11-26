@@ -1,0 +1,19 @@
+# Godot 4+ specific ignores
+.godot/
+/android/
+bin/
+obj/
+node_modules/
+
+# .NET / IDE
+.vs/
+*.user
+*.suo
+
+# Agent workspace data (local only)
+.workbuddy/
+
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini

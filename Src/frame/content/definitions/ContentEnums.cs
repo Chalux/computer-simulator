@@ -1,0 +1,343 @@
+namespace KemoCard.Frame.Content.Definitions;
+
+public enum EItemKind { Consumable, Relic }
+
+public enum ECostType
+{
+    None,
+    Energy,
+    Health,
+    Gold,
+    Discard,
+    X,
+}
+
+public enum ECardType
+{
+    Physics,
+    Magical,
+    Support,
+    Guard,
+    Resist,
+    Weak,
+    Counter,
+    Healing,
+    Curse,
+}
+
+public enum ECostScalingKind
+{
+    None,
+    X,
+    PerDiscard,
+    PerCardInHand,
+    PerEnemyAlive,
+    PerAllyAlive,
+}
+
+public enum ETargetSide
+{
+    Self,
+    Ally,
+    Enemy,
+    Any,
+}
+
+public enum ETargetScope
+{
+    Self,
+    Single,
+    All,
+    RandomN,
+    /// <summary>
+    /// 对该侧队伍账本一次结算（战斗规格 §1.3）；与 <see cref="All"/> 的分槽逐次结算相区分。
+    /// </summary>
+    Team,
+}
+
+public enum ERetargetPolicy
+{
+    Default,
+    RandomLegal,
+    HighestHp,
+    LowestHp,
+    Skip,
+}
+
+/// <summary>
+/// 卡牌 / 道具稀有度（2026-09-21 收敛档名）。
+/// </summary>
+/// <remarks>
+/// 通用三档为 <see cref="Common"/> / <see cref="Rare"/> / <see cref="Legendary"/>；
+/// 原 <c>Uncommon</c> 更名为 <see cref="Special"/>，原 <c>Epic</c> 更名为 <see cref="Exclusive"/>
+/// （配合 `isExclusive: true` 的"角色专属卡"语义）。卡框资源与本地化文案同步改名，不保留旧名。
+/// </remarks>
+public enum ERarity
+{
+    Common,
+    Special,
+    Rare,
+    Exclusive,
+    Legendary,
+}
+
+public enum EBuffDurationType
+{
+    Permanent,
+    Turns,
+    Combat,
+    UntilDispelled,
+    UntilNextTurnStart,
+    Wave,
+}
+
+public enum EBuffStackRule
+{
+    Add,
+    Refresh,
+    Replace,
+    /// <summary>同名效果各自持有实例、时长和移除钩子；maxStacks 限制实例数。</summary>
+    Independent,
+}
+
+public enum EEffectKind
+{
+    Damage,
+    Heal,
+    ApplyBuff,
+    RemoveBuff,
+    Draw,
+    Discard,
+    GainResource,
+    ModifyStat,
+    ExecuteScript,
+    ChainEffects,
+    /// <summary>授予充能球（params.orbTypeId + 可选 params.count，默认 1；产球者 = 来源角色）。</summary>
+    GainOrb,
+    /// <summary>
+    /// 玩家来源给自身、敌方来源给传入玩家目标挂槽位 buff；params.buffId + slotIndex 或
+    /// slotSelection（randomNonEmpty / random / all）。与同名技能动作同义，供 buff 钩子使用。
+    /// </summary>
+    AttachSlotBuff,
+
+    /// <summary>
+    /// 按"本回合打出过的卡牌数"授予充能球（params.orbTypeId + 可选 params.perCard 默认 1 +
+    /// 可选 params.offset 默认 0；数量 = max(0, 出牌数 × perCard + offset)）。
+    /// 「本回合打出 X 张牌则获得 X-1 个绿球」即 perCard 1 / offset -1。
+    /// </summary>
+    GainOrbPerPlayedCard,
+
+    /// <summary>
+    /// 按"自身卡组内命中筛选项的卡牌数"分档授予充能球：
+    /// <c>params.orbTypeId</c>（必填）+ <c>params.elementMask</c>（可选，0 = 不筛属性）+
+    /// <c>params.tiers</c>（<c>[[最小张数, 球数], …]</c>，取满足条件的最高档）。
+    /// 「卡组内绿卡 0/4/7 张 → 2/3/4 个绿球」即 <c>tiers: [[0,2],[4,3],[7,4]]</c>。
+    /// </summary>
+    GainOrbByDeckCount,
+
+    /// <summary>
+    /// 设置目标敌人的<b>行动计数</b>（<c>params.count</c>，缺省 2）：计数 &gt; 1 的敌人在接下来的
+    /// 敌方阶段只递减计数、不行动，因此 2 = 把它的行动推迟到下个回合（冯·诺依曼被动6）。
+    /// </summary>
+    SetActionCount,
+
+    /// <summary>
+    /// 展开队伍<b>领域</b>（<c>params.gameplayEffectId</c> 必填 + <c>params.turns</c> 可选 = 持续回合数）：
+    /// 领域是队伍 ASC 上的单例增益，新领域顶替旧的；带 <c>turns</c> 时到期自动收起。
+    /// </summary>
+    SetDomain,
+
+    /// <summary>
+    /// 弃置来源角色指定手牌槽的牌（<c>params.slotIndex</c>，0 起）。
+    /// 只弃未标记的牌——已入队/已确认的牌不动（规格 §2.2"其它通道"口径）。
+    /// 暴风（<c>slot.storm</c>）逐相邻槽触发本效果。
+    /// </summary>
+    DiscardSlot,
+
+    /// <summary>
+    /// 投放抽牌数量修正（<c>params.amount</c>，可为负）：供每回合抽牌公式取最大 ±N（规格 §4.2），
+    /// 与同名技能动作同义，供 <b>buff 钩子</b>使用（「红属性·动物角色每回合抽卡 +1」这类常驻光环）。
+    /// 只作用于本阶段的抽牌步骤，用完即弃（<c>PlayerPhasePipeline</c> 抽牌后清账）。
+    /// </summary>
+    ModifyDrawCount,
+
+    /// <summary>
+    /// 授予护盾（<c>params.amount</c>）：给目标玩家角色加可消耗护盾值，受击时优先抵扣
+    /// （见战斗规格「护盾」）。与同名技能动作同义，供 <b>buff 钩子</b>使用
+    /// （「红属性·动物角色受到伤害后获得 1 护盾」这类被动）。
+    /// </summary>
+    GainShield,
+
+    /// <summary>
+    /// 按"最近一次实际弃置的张数"投放抽牌数量修正（<c>params.perCard</c> 缺省 1）：
+    /// 与同名技能动作同义，供 <b>buff 钩子</b>使用（如"释放主动技后按弃牌数补抽"）。
+    /// 读取不清账——账期由玩家阶段开始时的清账界定（与同名技能动作共享同一份弃牌记录）。
+    /// </summary>
+    ModifyDrawCountByDiscard,
+    /// <summary>驱散目标角色身上的可驱散负面 Buff 和 GameplayEffect，不处理手牌槽。</summary>
+    DispelDebuffs,
+}
+
+public enum ESkillActionKind
+{
+    Draw,
+    Discard,
+    GainResource,
+    ExecuteScript,
+    ChainActions,
+    ApplyGameplayEffect,
+    RemoveGameplayEffect,
+    /// <summary>投放抽牌数量修正（规格 §4.2 / §4.3），不即时抽牌。</summary>
+    ModifyDrawCount,
+    /// <summary>对目标挂 buff（params.buffId 必填）。</summary>
+    ApplyBuff,
+    /// <summary>驱散目标 buff（params.buffId 或 params.withTags）。</summary>
+    RemoveBuff,
+    /// <summary>给来源角色的手牌槽位挂 buff（params.buffId + params.slotIndex）。</summary>
+    AttachSlotBuff,
+    /// <summary>授予充能球（params.orbTypeId + 可选 params.count，默认 1；产球者 = 来源角色）。</summary>
+    GainOrb,
+    /// <summary>设置目标敌人的行动计数（params.count，缺省 2，下限 1）。</summary>
+    SetActionCount,
+    /// <summary>展开队伍领域（params.gameplayEffectId + 可选 params.turns = 持续回合数）。</summary>
+    SetDomain,
+    /// <summary>弃置来源角色指定手牌槽的牌（params.slotIndex，0 起；只弃未标记的牌）。</summary>
+    DiscardSlot,
+    /// <summary>授予护盾（params.amount）：给目标玩家角色加可消耗护盾值（见战斗规格「护盾」）。</summary>
+    GainShield,
+    /// <summary>
+    /// 弃置 <c>params.count</c> 张手牌（缺省 1）并记录<b>实际</b>弃置的张数（手牌不足时按实际张数记账）：
+    /// 弃牌分流与 <see cref="Discard"/> 完全一致（同通道、同选牌/显式随机规则、同表现事件），
+    /// 只是把实际张数登记到 <c>CombatSimulation.LastDiscardCount</c>，供同链后续的
+    /// <see cref="ModifyDrawCountByDiscard"/> / <see cref="DrawByDiscard"/> 读取。
+    /// </summary>
+    DiscardAndRecord,
+    /// <summary>
+    /// 按"最近一次 <see cref="DiscardAndRecord"/> 实际弃置的张数"投放抽牌数量修正：
+    /// 增量 = 实际弃牌数 × <c>params.perCard</c>（缺省 1，下限 0），供下一回合的抽牌步骤取最大 ±N（规格 §4.2）。
+    /// 目标解析与 <see cref="ModifyDrawCount"/> 同口径（带 <c>hookTargets</c> / <c>targetFilter</c> 时重解析，
+    /// 缺省落在来源角色）。读取最近一次主动弃牌的实际张数，不清零；下一次主动弃牌会覆盖记录。
+    /// </summary>
+    ModifyDrawCountByDiscard,
+
+    /// <summary>
+    /// 按最近一次实际弃牌数 × params.perCard（默认 1）立即抽牌，不增加后续抽牌修正。
+    /// 读取不清账，供同链后续伤害继续使用实际弃牌数；目标选择与 ModifyDrawCount 相同。
+    /// </summary>
+    DrawByDiscard,
+    /// <summary>仅主动技能通道：抽取目标角色的牌，直到队伍满手或无符合条件的牌可抽。</summary>
+    FillHand,
+    /// <summary>驱散目标角色身上的可驱散负面 Buff 和 GameplayEffect，不处理手牌槽。</summary>
+    DispelDebuffs,
+    /// <summary>召唤敌人；params.enemyId / count / maxAlive / maxSummons / trackLifeBarSummons。</summary>
+    SummonEnemy,
+}
+
+[Flags]
+public enum EElement
+{
+    None = 0,
+    Red = 1,
+    Blue = 1 << 1,
+    Green = 1 << 2,
+    Yellow = 1 << 3,
+}
+
+/// <summary>
+/// 伤害的"类型"维度（与 <see cref="EElement"/> 正交的另一维）：物理 / 魔法 / 元素。
+/// </summary>
+/// <remarks>
+/// 物理与魔法走攻防公式（<c>攻击力 − 目标对应防御</c>，见战斗规格「伤害包管线」）；
+/// <see cref="Elemental"/> 是"既非物理也非魔法"的纯属性伤害（充能球的元素球、元素类效果），
+/// 不吃物防/魔防。元素维度单独由 <see cref="EElement"/> 表达：物理/魔法攻击也可以带元素标签
+/// （普通攻击 = 物/魔之一 + 攻击者元素）。
+/// </remarks>
+public enum EDamageKind
+{
+    Elemental,
+
+    Physical,
+
+    Magical,
+}
+
+public enum ERole
+{
+    None,
+    Attack,
+    Defense,
+    Support,
+}
+
+public enum EEventKind
+{
+    Data,
+    Script,
+}
+
+public enum ERewardKind
+{
+    Gold,
+    CardChoice,
+    ItemGrant,
+    Effect,
+}
+
+/// <summary>
+/// 种族（位标志，可多选）。
+/// </summary>
+/// <remarks>
+/// 2026-09-21 收敛：<c>Canine</c>/<c>Feline</c>/<c>Bird</c>/<c>Beast</c>/<c>Reptile</c> 五族合并为
+/// <see cref="Animal"/>（动物）；<c>Demonic</c> 与 <c>Devil</c> 合并为 <see cref="Demon"/>（恶魔族）；
+/// 新增 <see cref="Academic"/>（学术）/ <see cref="Fantasy"/>（幻想）/ <see cref="Astronomy"/>（天文）/
+/// <see cref="Hero"/>（英雄）/ <see cref="Calamity"/>（灾厄）；原 <c>UnKnown</c> 更名为 <see cref="Unknown"/>。
+/// 位值重排是安全的：种族只存在于内容 JSON（按名反序列化）与运行期 DTO，不落存档。
+/// </remarks>
+[Flags]
+public enum ERace
+{
+    None = 0,
+    Human = 1 << 0,
+    /// <summary>动物族（原犬族 / 猫族 / 鸟族 / 兽族 / 爬行）。</summary>
+    Animal = 1 << 1,
+    Insect = 1 << 2,
+    Fish = 1 << 3,
+    Plant = 1 << 4,
+    Machine = 1 << 5,
+    /// <summary>恶魔族（原 Demonic + Devil）。</summary>
+    Demon = 1 << 6,
+    Angel = 1 << 7,
+    Dragon = 1 << 8,
+    God = 1 << 9,
+    Undead = 1 << 10,
+    /// <summary>学术。</summary>
+    Academic = 1 << 11,
+    /// <summary>幻想。</summary>
+    Fantasy = 1 << 12,
+    /// <summary>天文。</summary>
+    Astronomy = 1 << 13,
+    /// <summary>英雄。</summary>
+    Hero = 1 << 14,
+    /// <summary>灾厄。</summary>
+    Calamity = 1 << 15,
+    Unknown = 1 << 16,
+}
+
+public enum EPortraitKey
+{
+    Neutral,
+    Smile,
+    Angry,
+    Sad,
+    Surprised,
+    Hurt,
+    Serious,
+    Happy,
+    Naughty,
+}
+
+public enum EPresentationKind
+{
+    SpriteFrames,
+    Spine,
+}
