@@ -7,7 +7,7 @@ public sealed record CoolerInfo(string Name, int Adjustable_y_max);
 public sealed record CaseInfo(string Name, int HeightLimit, int GpuLimit, int PsuLimit);
 public sealed record MemoryInfo(string Name, int[] Dimensions);
 public sealed record CardInfo(string Name, int[] Dimensions);
-public sealed record PsuInfo(string Name, int Continuous, int Pulse, int Length, string Cable);
+public sealed record PsuInfo(string Name, int Continuous, int Pulse, int Length, string Cable, int Recommended = 0);
 public sealed record LiquidInfo(string Name, int CoreThickness, int FanThickness);
 public sealed record TestPreset(string Name);
 public sealed record BenchmarkOptions(TestPreset[] Airflows, TestPreset[] Workloads);

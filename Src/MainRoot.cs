@@ -1,3 +1,4 @@
+using ComputerSimulator.Modules.Diagnosis;
 using ComputerSimulator.Modules.Menu;
 using ComputerSimulator.Modules.Workbench;
 using Godot;
@@ -18,6 +19,7 @@ public partial class MainRoot : Control
     private ModeSelectScreen? _modeSelect;
     private ModeTeaserScreen? _modePage;
     private ClearanceWorkbench? _workbench;
+    private DiagnosisCaseScreen? _diagnosis;
     private GameMode? _lastMode;
     private ColorRect? _fade;
     private bool _transitioning;
@@ -58,8 +60,8 @@ public partial class MainRoot : Control
     {
         if (_transitioning || !@event.IsActionPressed("ui_cancel")) return;
 
-        // 模式内（简报页或沙盒工作台）先回模式选择，模式选择再回主菜单。
-        if (_workbench != null || _modePage != null)
+        // 模式内（简报页、故障诊断或装配工作台）先回模式选择，模式选择再回主菜单。
+        if (_workbench != null || _diagnosis != null || _modePage != null)
         {
             GetViewport().SetInputAsHandled();
             Transition(ShowModeSelect);
@@ -102,15 +104,22 @@ public partial class MainRoot : Control
         KeepOverlayOnTop();
     }
 
-    /// <summary>只有沙盒会创建现有装配/诊断/负载工作台，其余模式一律进入简报页。</summary>
+    /// <summary>沙盒与神秘箱共用现有工作台，故障诊断进入 04-01 专用案例，其余三个模式进入简报页。</summary>
     private void EnterMode(GameMode mode)
     {
         if (_transitioning) return;
 
         _lastMode = mode;
-        if (mode == GameMode.Sandbox)
+        if (mode is GameMode.Sandbox or GameMode.MysteryCrate)
         {
-            Transition(StartSandbox);
+            bool crate = mode == GameMode.MysteryCrate;
+            Transition(() => StartSandbox(crate));
+            return;
+        }
+
+        if (mode == GameMode.Diagnosis)
+        {
+            Transition(StartDiagnosis);
             return;
         }
 
@@ -131,12 +140,12 @@ public partial class MainRoot : Control
         KeepOverlayOnTop();
     }
 
-    private void StartSandbox()
+    private void StartSandbox(bool crate = false)
     {
         if (_workbench != null) return;
 
         ClearScreens();
-        var workbench = new ClearanceWorkbench();
+        var workbench = new ClearanceWorkbench { CrateMode = crate };
         AddChild(workbench);
         workbench.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         workbench.BackRequested += () => Transition(ShowModeSelect);
@@ -145,7 +154,21 @@ public partial class MainRoot : Control
         KeepOverlayOnTop();
     }
 
-    /// <summary>退出当前模式时立即解除引用，节点在本帧末释放并触发工作台的规则环境清理。</summary>
+    private void StartDiagnosis()
+    {
+        if (_diagnosis != null) return;
+
+        ClearScreens();
+        var diagnosis = new DiagnosisCaseScreen();
+        AddChild(diagnosis);
+        diagnosis.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        diagnosis.BackRequested += () => Transition(ShowModeSelect);
+        _diagnosis = diagnosis;
+
+        KeepOverlayOnTop();
+    }
+
+    /// <summary>退出当前模式时立即解除引用，节点在本帧末释放并触发工作台/诊断案例的规则环境清理。</summary>
     private void ClearScreens()
     {
         _menu?.QueueFree();
@@ -156,6 +179,8 @@ public partial class MainRoot : Control
         _modePage = null;
         _workbench?.QueueFree();
         _workbench = null;
+        _diagnosis?.QueueFree();
+        _diagnosis = null;
     }
 
     /// <summary>

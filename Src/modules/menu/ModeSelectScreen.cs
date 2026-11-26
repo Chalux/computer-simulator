@@ -4,7 +4,7 @@ namespace ComputerSimulator.Modules.Menu;
 
 /// <summary>
 /// 模式选择：主菜单“开始装配”后的第一跳。六个入口来自同一份目录数据，
-/// 只有沙盒会进入真实工作台，其余五个交给模式简报页。
+/// 沙盒与神秘箱进入工作台，故障诊断进入专用案例，其余三个交给模式简报页。
 /// </summary>
 public partial class ModeSelectScreen : Control
 {

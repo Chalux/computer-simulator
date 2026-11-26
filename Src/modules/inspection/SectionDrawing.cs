@@ -7,6 +7,8 @@ namespace ComputerSimulator.Modules.Inspection;
 public partial class SectionDrawing : Control
 {
     private FitResult? _result;
+    private const int RamLabelSize = 12;
+    private const float LedgerGap = 12f;
     public void Display(FitResult result) { _result = result; QueueRedraw(); }
 
     public override void _Draw()
@@ -15,12 +17,29 @@ public partial class SectionDrawing : Control
         if (_result == null || Size.X < 50 || Size.Y < 40) return;
         var board = _result.Parts.First(p => p.Role == "board");
         if (_result.GpuLimit is int limit) { DrawGraphicsSection(_result, limit); return; }
-        float scale = Mathf.Min((Size.X - 32) / board.Extent.X, (Size.Y - 38) / (_result.HeightLimit + 18));
-        var start = new Vector2((Size.X - board.Extent.X * scale) / 2, Size.Y - 21);
+        Font labelFont = GetThemeDefaultFont();
+        var ramParts = _result.Parts.Where(p => p.Role == "ram").OrderBy(p => p.Center.X).ToList();
+        float[] labelWidths = ramParts
+            .Select(p => labelFont.GetStringSize(p.Id, HorizontalAlignment.Left, -1, RamLabelSize).X)
+            .ToArray();
+        int ramRows = ramParts.Count switch
+        {
+            0 => 0,
+            1 => 1,
+            2 => 12f + labelWidths[0] + LedgerGap + labelWidths[1] <= Size.X ? 1 : 2,
+            _ => 2,
+        };
+        float ledgerRowHeight = labelFont.GetHeight(RamLabelSize) + 2f;
+        float labelAscent = labelFont.GetAscent(RamLabelSize);
+        float bottomPad = ramRows >= 2 ? 12f + ledgerRowHeight + labelAscent : 21f;
+        float scale = Mathf.Min((Size.X - 32) / board.Extent.X,
+            Mathf.Max(Size.Y - 17 - bottomPad, 24) / (_result.HeightLimit + 18));
+        var start = new Vector2((Size.X - board.Extent.X * scale) / 2, Size.Y - bottomPad);
         Vector2 Project(float x, float y) => start + new Vector2(x, -y) * scale;
         Rect2 Rect(Volume p) => new(Project(p.Corner.X, p.Corner.Y + p.Extent.Y),
             new Vector2(p.Extent.X, p.Extent.Y) * scale);
         var warn = _result.Issues.SelectMany(issue => issue.Parts).ToHashSet();
+        var ramAnchors = new List<(string Id, Vector2 Anchor)>();
         foreach (var p in _result.Parts)
         {
             if (p.Role == "panel") continue;
@@ -36,11 +55,9 @@ public partial class SectionDrawing : Control
             DrawRect(rect, new Color(color, .25f));
             DrawRect(rect, warn.Contains(p.Id) ? new Color("#ff8179") : color, false, 1);
             if (p.Role == "ram")
-            {
-                var label = Project(p.Center.X, 0) + new Vector2(-10, 16);
-                DrawString(GetThemeDefaultFont(), label, p.Id, fontSize: 12, modulate: color);
-            }
+                ramAnchors.Add((p.Id, rect.Position + new Vector2(rect.Size.X / 2, rect.Size.Y)));
         }
+        DrawRamLedger(labelFont, ramAnchors, ramRows, ledgerRowHeight);
         int callout = 0;
         foreach (var issue in _result.Issues)
         {
@@ -58,6 +75,29 @@ public partial class SectionDrawing : Control
         DrawDashedLine(new Vector2(8, line.Y), new Vector2(Size.X - 8, line.Y), new Color("#c6ac77"), 1, 6);
         DrawString(GetThemeDefaultFont(), new Vector2(12, line.Y - 5), $"侧板  {_result.HeightLimit} mm",
             fontSize: 13, modulate: new Color("#efcc8d"));
+    }
+
+    private void DrawRamLedger(Font font, List<(string Id, Vector2 Anchor)> entries, int rows, float rowHeight)
+    {
+        if (entries.Count == 0 || rows <= 0) return;
+        entries.Sort((a, b) => a.Anchor.X.CompareTo(b.Anchor.X));
+        float ascent = font.GetAscent(RamLabelSize);
+        var cursor = new float[rows];
+        for (int i = 0; i < rows; i++) cursor[i] = 6f;
+        var ink = new Color("#7bd5d9");
+        for (int i = 0; i < entries.Count; i++)
+        {
+            var (id, anchor) = entries[i];
+            int row = i % rows;
+            Vector2 textSize = font.GetStringSize(id, HorizontalAlignment.Left, -1, RamLabelSize);
+            float baseline = Size.Y - 6f - (rows - 1 - row) * rowHeight;
+            float maxLeft = Mathf.Max(cursor[row], Size.X - 6f - textSize.X);
+            float left = Mathf.Clamp(anchor.X - textSize.X / 2f, cursor[row], maxLeft);
+            cursor[row] = left + textSize.X + LedgerGap;
+            var top = new Vector2(left + textSize.X / 2f, baseline - ascent);
+            DrawLine(anchor + new Vector2(0, 2), top + new Vector2(0, -2), new Color(ink, .5f), 1, true);
+            DrawString(font, new Vector2(left, baseline), id, fontSize: RamLabelSize, modulate: ink);
+        }
     }
 
     private void DrawGraphicsSection(FitResult result, int limit)

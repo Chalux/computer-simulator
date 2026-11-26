@@ -22,6 +22,9 @@ public partial class BenchViewport : SubViewportContainer
     private MeshInstance3D? _panel;
     private bool _showPanel;
 
+    /// <summary>当前视图预设；手动调整相机时为 -1。</summary>
+    public event Action<int>? ViewPresetChanged;
+
     public override void _Ready()
     {
         Stretch = true;
@@ -86,6 +89,7 @@ public partial class BenchViewport : SubViewportContainer
             _zoom = _liquid ? 275 : 203;
         }
         PositionCamera();
+        ViewPresetChanged?.Invoke(view);
     }
 
     private void PositionCamera()
@@ -121,6 +125,7 @@ public partial class BenchViewport : SubViewportContainer
         else return;
         _autoFramed = false;
         PositionCamera();
+        ViewPresetChanged?.Invoke(-1);
         AcceptEvent();
     }
 

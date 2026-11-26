@@ -3,7 +3,7 @@ using Godot;
 namespace ComputerSimulator.Modules.Menu;
 
 /// <summary>
-/// 尚未开放模式的通用简报页。五个占位模式共用这一页，
+/// 尚未开放模式的通用简报页。三个占位模式共用这一页，
 /// 只读取 <see cref="GameModeCatalog"/> 中的名称与玩法简介。
 /// </summary>
 public partial class ModeTeaserScreen : Control

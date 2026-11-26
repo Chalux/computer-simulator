@@ -13,7 +13,7 @@ public enum GameMode
     Sandbox,
 }
 
-/// <summary>模式的静态展示资料。当前版本只有沙盒开放，其余五个走简报页。</summary>
+/// <summary>模式的静态展示资料。当前版本沙盒、故障诊断与神秘箱首箱已开放，其余三个走简报页。</summary>
 public sealed record GameModeInfo(
     GameMode Mode,
     string Index,
@@ -30,10 +30,10 @@ public static class GameModeCatalog
             "接受客户委托，在预算、用途与验收标准之间取舍，交出一台能通过验收的整机。", false),
         new(GameMode.Marketplace, "02", "二手市场", "MARKET",
             "按周期与成色选购二手配件，在成本与风险之间权衡，凑出一台可用的整机。", false),
-        new(GameMode.MysteryCrate, "03", "神秘箱", "MYSTERY CRATE",
-            "锁定商店，只能用给定的一批混合配件，拼出一台能点亮且综合评分更高的整机。", false),
+        new(GameMode.MysteryCrate, "03", "神秘箱 · 首箱", "MYSTERY CRATE",
+            "打开 03 首箱，只能从箱内挑选机箱、显卡与电源，配出能通过 4K 负载测试的整机并提交综合评分。", true),
         new(GameMode.Diagnosis, "04", "故障诊断", "DIAGNOSTICS",
-            "只凭症状与日志定位故障，在有限的替换件中找出真正的问题所在。", false),
+            "只凭症状与实测功耗曲线定位故障，在唯一一次替换额度内，把黑屏整机真正修好。", true),
         new(GameMode.EraScenario, "05", "时代剧本", "ERA SCENARIO",
             "回到指定年代，用当年的配件与预算，还原一台符合时代气质的机器。", false),
         new(GameMode.Sandbox, "06", "沙盒模式", "SANDBOX",
