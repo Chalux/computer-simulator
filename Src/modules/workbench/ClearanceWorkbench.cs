@@ -8,8 +8,8 @@ namespace ComputerSimulator.Modules.Workbench;
 
 public partial class ClearanceWorkbench : PanelContainer
 {
-    /// <summary>请求返回主菜单（由组合根接管场景切换）。</summary>
-    public event Action? MenuRequested;
+    /// <summary>请求返回模式选择（由组合根接管场景切换）。</summary>
+    public event Action? BackRequested;
 
     private ClearanceRules? _rules;
     private readonly BenchViewport _viewport = new() { SizeFlagsVertical = SizeFlags.ExpandFill };
@@ -52,20 +52,21 @@ public partial class ClearanceWorkbench : PanelContainer
         AddChild(page);
         var header = new HBoxContainer();
         page.AddChild(header);
-        var title = Caption(header, "PC Architect   /   装配工作台", 22);
+        var title = Caption(header, "PC Architect   /   沙盒工作台", 22);
         title.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         header.AddChild(_status);
         header.AddChild(new Control { CustomMinimumSize = new Vector2(10, 0) });
         var menuButton = new Button
         {
-            Text = "主菜单",
-            TooltipText = "返回主菜单（ESC）",
+            Text = "模式选择",
+            TooltipText = "返回模式选择（ESC）",
             CustomMinimumSize = new Vector2(78, 28),
-            FocusMode = FocusModeEnum.None,
+            FocusMode = FocusModeEnum.All,
         };
         menuButton.AddThemeFontSizeOverride("font_size", 13);
         menuButton.AddThemeColorOverride("font_color", Muted);
         menuButton.AddThemeColorOverride("font_hover_color", new Color("#eef2f3"));
+        menuButton.AddThemeColorOverride("font_focus_color", new Color("#eef2f3"));
         // 中性描边，与主菜单的 Steel / Platinum 令牌一致，不引入第二种强调色。
         menuButton.AddThemeStyleboxOverride("normal", new StyleBoxFlat
         {
@@ -94,7 +95,16 @@ public partial class ClearanceWorkbench : PanelContainer
             BorderWidthRight = 1,
             BorderWidthBottom = 1,
         });
-        menuButton.Pressed += () => MenuRequested?.Invoke();
+        menuButton.AddThemeStyleboxOverride("focus", new StyleBoxFlat
+        {
+            BgColor = new Color(1f, 1f, 1f, 0.03f),
+            BorderColor = new Color("#5be3d0"),
+            BorderWidthLeft = 1,
+            BorderWidthTop = 1,
+            BorderWidthRight = 1,
+            BorderWidthBottom = 1,
+        });
+        menuButton.Pressed += () => BackRequested?.Invoke();
         header.AddChild(menuButton);
         page.AddChild(new HSeparator());
 

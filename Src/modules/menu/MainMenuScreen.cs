@@ -8,7 +8,8 @@ namespace ComputerSimulator.Modules.Menu;
 /// </summary>
 public partial class MainMenuScreen : Control
 {
-    public event Action? BuildRequested;
+    /// <summary>“开始装配”不再直接进工作台，先交给组合根打开模式选择。</summary>
+    public event Action? ModesRequested;
 
     private readonly List<TechMenuItem> _items = [];
     private readonly VBoxContainer _menu = new();
@@ -19,7 +20,6 @@ public partial class MainMenuScreen : Control
     private Control _left = null!;
     private Control _footer = null!;
     private TechShowcase _showcase = null!;
-    private bool _leaving;
 
     public override void _Ready()
     {
@@ -112,7 +112,7 @@ public partial class MainMenuScreen : Control
         _menu.AddThemeConstantOverride("separation", 0);
         column.AddChild(_menu);
 
-        AddItem("01", "开始装配", "START BUILD", RequestBuild);
+        AddItem("01", "开始装配", "START BUILD", RequestModes);
         AddItem("02", "系统设置", "SYSTEM CONFIG", OpenSettings);
         AddItem("03", "制作名单", "CREDITS", OpenCredits);
         AddItem("04", "退出游戏", "EXIT", () => GetTree().Quit());
@@ -217,11 +217,9 @@ public partial class MainMenuScreen : Control
 
     #region 行为
 
-    private void RequestBuild()
+    private void RequestModes()
     {
-        if (_leaving) return;
-        _leaving = true;
-        BuildRequested?.Invoke();
+        ModesRequested?.Invoke();
     }
 
     private void OpenSettings()

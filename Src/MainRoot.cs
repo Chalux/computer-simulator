@@ -15,7 +15,10 @@ public partial class MainRoot : Control
 {
     private UIManager? _ui;
     private MainMenuScreen? _menu;
+    private ModeSelectScreen? _modeSelect;
+    private ModeTeaserScreen? _modePage;
     private ClearanceWorkbench? _workbench;
+    private GameMode? _lastMode;
     private ColorRect? _fade;
     private bool _transitioning;
 
@@ -53,11 +56,20 @@ public partial class MainRoot : Control
 
     public override void _UnhandledInput(InputEvent @event)
     {
-        // 装配工作台里按 ESC 回到主菜单（当前没有其他使用 ESC 的界面）。
-        if (_workbench != null && @event.IsActionPressed("ui_cancel"))
+        if (_transitioning || !@event.IsActionPressed("ui_cancel")) return;
+
+        // 模式内（简报页或沙盒工作台）先回模式选择，模式选择再回主菜单。
+        if (_workbench != null || _modePage != null)
         {
             GetViewport().SetInputAsHandled();
-            Transition(ReturnToMenu);
+            Transition(ShowModeSelect);
+            return;
+        }
+
+        if (_modeSelect != null)
+        {
+            GetViewport().SetInputAsHandled();
+            Transition(ShowMenu);
         }
     }
 
@@ -65,41 +77,85 @@ public partial class MainRoot : Control
     {
         if (_menu != null) return;
 
+        ClearScreens();
         var menu = new MainMenuScreen();
         AddChild(menu);
         menu.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        menu.BuildRequested += () => Transition(StartBuild);
+        menu.ModesRequested += () => Transition(ShowModeSelect);
         _menu = menu;
 
         KeepOverlayOnTop();
     }
 
-    private void StartBuild()
+    private void ShowModeSelect()
     {
-        if (_workbench != null) return;
+        if (_modeSelect != null) return;
 
-        var workbench = new ClearanceWorkbench();
-        AddChild(workbench);
-        workbench.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        workbench.MenuRequested += () => Transition(ReturnToMenu);
-        _workbench = workbench;
-
-        if (_menu != null)
-        {
-            _menu.QueueFree();
-            _menu = null;
-        }
+        ClearScreens();
+        var select = new ModeSelectScreen { InitialFocus = _lastMode };
+        AddChild(select);
+        select.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        select.ModeSelected += EnterMode;
+        select.BackRequested += () => Transition(ShowMenu);
+        _modeSelect = select;
 
         KeepOverlayOnTop();
     }
 
-    private void ReturnToMenu()
+    /// <summary>只有沙盒会创建现有装配/诊断/负载工作台，其余模式一律进入简报页。</summary>
+    private void EnterMode(GameMode mode)
     {
-        if (_workbench == null) return;
+        if (_transitioning) return;
 
-        _workbench.QueueFree();
+        _lastMode = mode;
+        if (mode == GameMode.Sandbox)
+        {
+            Transition(StartSandbox);
+            return;
+        }
+
+        Transition(() => ShowModeBrief(mode));
+    }
+
+    private void ShowModeBrief(GameMode mode)
+    {
+        if (_modePage != null) return;
+
+        ClearScreens();
+        var page = new ModeTeaserScreen { Mode = mode };
+        AddChild(page);
+        page.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        page.BackRequested += () => Transition(ShowModeSelect);
+        _modePage = page;
+
+        KeepOverlayOnTop();
+    }
+
+    private void StartSandbox()
+    {
+        if (_workbench != null) return;
+
+        ClearScreens();
+        var workbench = new ClearanceWorkbench();
+        AddChild(workbench);
+        workbench.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        workbench.BackRequested += () => Transition(ShowModeSelect);
+        _workbench = workbench;
+
+        KeepOverlayOnTop();
+    }
+
+    /// <summary>退出当前模式时立即解除引用，节点在本帧末释放并触发工作台的规则环境清理。</summary>
+    private void ClearScreens()
+    {
+        _menu?.QueueFree();
+        _menu = null;
+        _modeSelect?.QueueFree();
+        _modeSelect = null;
+        _modePage?.QueueFree();
+        _modePage = null;
+        _workbench?.QueueFree();
         _workbench = null;
-        ShowMenu();
     }
 
     /// <summary>
@@ -109,6 +165,9 @@ public partial class MainRoot : Control
     {
         if (_transitioning) return;
         _transitioning = true;
+
+        // 转场期间释放焦点，避免按住确认键或连按在淡出阶段重复触发旧页面。
+        GetViewport().GuiGetFocusOwner()?.ReleaseFocus();
 
         ColorRect fade = EnsureFade();
         fade.Visible = true;
