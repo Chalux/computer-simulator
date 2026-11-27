@@ -1,0 +1,49 @@
+{
+  "ambient": 25,
+  "referenceBandwidth": 89.6,
+  "cpuMaxRate": 5600,
+  "airflows": [
+    { "id": "balanced", "order": 0, "name": "均衡进排风", "intake": 55, "exhaust": 52, "caseNoise": 28 },
+    { "id": "intake_only", "order": 1, "name": "仅进风", "intake": 55, "exhaust": 0, "caseNoise": 28 },
+    { "id": "fans_off", "order": 2, "name": "辅助风扇停转", "intake": 0, "exhaust": 0, "caseNoise": null }
+  ],
+  "workloads": [
+    {
+      "id": "gaming_1080p",
+      "order": 0,
+      "name": "1080p 高刷游戏",
+      "computeWeights": [0.50, 0.27, 0.23],
+      "weights": [0.32, 0.22, 0.12, 0.12, 0.07, 0.15],
+      "referenceRoi": 0.014,
+      "targetMargin": 20,
+      "targetNoise": 36
+    },
+    {
+      "id": "gaming_4k",
+      "order": 1,
+      "name": "4K 游戏",
+      "computeWeights": [0.18, 0.71, 0.11],
+      "weights": [0.46, 0.12, 0.14, 0.08, 0.06, 0.14],
+      "referenceRoi": 0.015,
+      "targetMargin": 15,
+      "targetNoise": 39
+    }
+  ],
+  "loadCurve": [
+    { "name": "空闲", "cpu": 40, "other": 46, "pulse": false },
+    { "name": "持续满载", "cpu": 125, "other": 55, "pulse": false },
+    { "name": "处理器加速脉冲", "cpu": 175, "other": 55, "pulse": true },
+    { "name": "显卡瞬时脉冲", "cpu": 147, "other": 55, "pulse": true }
+  ],
+  "initial": {
+    "caseId": "narrow",
+    "ramId": "prism",
+    "slots": [1, 3],
+    "offset": 0,
+    "front360": false,
+    "gpuId": "x3",
+    "airflowId": "balanced",
+    "workloadId": "gaming_1080p",
+    "psuId": "g750"
+  }
+}

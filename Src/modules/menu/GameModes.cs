@@ -1,3 +1,5 @@
+using KemoCard.Frame.Content.Simulator;
+
 namespace ComputerSimulator.Modules.Menu;
 
 /// <summary>
@@ -13,7 +15,7 @@ public enum GameMode
     Sandbox,
 }
 
-/// <summary>模式的静态展示资料。当前版本沙盒、故障诊断与神秘箱首箱已开放，其余三个走简报页。</summary>
+/// <summary>模式的展示资料，含当前开放状态；数据源为 content/game_modes。</summary>
 public sealed record GameModeInfo(
     GameMode Mode,
     string Index,
@@ -22,31 +24,49 @@ public sealed record GameModeInfo(
     string Summary,
     bool Available);
 
+/// <summary>
+/// 将内容包的模式定义转换为菜单的路由及展示数据。
+/// 只保留 <see cref="GameMode"/> 中存在的路由标识；未知、纯数字（枚举底层值）或
+/// 重复的标识会被跳过，避免内容包把菜单项指向不存在的路由。
+/// </summary>
 public static class GameModeCatalog
 {
-    public static readonly IReadOnlyList<GameModeInfo> All =
-    [
-        new(GameMode.Commission, "01", "委托挑战", "COMMISSION",
-            "接受客户委托，在预算、用途与验收标准之间取舍，交出一台能通过验收的整机。", false),
-        new(GameMode.Marketplace, "02", "二手市场", "MARKET",
-            "按周期与成色选购二手配件，在成本与风险之间权衡，凑出一台可用的整机。", false),
-        new(GameMode.MysteryCrate, "03", "神秘箱 · 首箱", "MYSTERY CRATE",
-            "打开 03 首箱，只能从箱内挑选机箱、显卡与电源，配出能通过 4K 负载测试的整机并提交综合评分。", true),
-        new(GameMode.Diagnosis, "04", "故障诊断", "DIAGNOSTICS",
-            "只凭症状与实测功耗曲线定位故障，在唯一一次替换额度内，把黑屏整机真正修好。", true),
-        new(GameMode.EraScenario, "05", "时代剧本", "ERA SCENARIO",
-            "回到指定年代，用当年的配件与预算，还原一台符合时代气质的机器。", false),
-        new(GameMode.Sandbox, "06", "沙盒模式", "SANDBOX",
-            "自由装配、诊断与整机负载测试，不受委托与预算限制。", true),
-    ];
-
-    public static GameModeInfo Get(GameMode mode)
+    internal static IReadOnlyList<GameModeInfo> Parse(IReadOnlyList<GameModeDefinitionDto> definitions)
     {
-        foreach (GameModeInfo info in All)
+        ArgumentNullException.ThrowIfNull(definitions);
+
+        var supported = new Dictionary<string, GameMode>(StringComparer.OrdinalIgnoreCase);
+        foreach (GameMode mode in Enum.GetValues<GameMode>())
         {
-            if (info.Mode == mode) return info;
+            supported[Enum.GetName(mode)!] = mode;
         }
 
-        throw new ArgumentOutOfRangeException(nameof(mode), mode, "未登记的模式");
+        var modes = new List<GameModeInfo>(definitions.Count);
+        var seen = new HashSet<GameMode>();
+        foreach (var definition in definitions)
+        {
+            string identifier = (definition.Mode ?? string.Empty).Trim();
+            if (!supported.TryGetValue(identifier, out GameMode mode) || !seen.Add(mode))
+            {
+                continue;
+            }
+
+            // 内容包可能为尚未实现的路线声明 Available=true；只有可玩路线才对外显示为开放，
+            // 保证标签与试玩提示一致。
+            bool playable = mode is GameMode.Commission
+                or GameMode.MysteryCrate
+                or GameMode.Sandbox
+                or GameMode.Diagnosis;
+
+            modes.Add(new GameModeInfo(
+                mode,
+                definition.Index,
+                definition.Title,
+                definition.Code,
+                definition.Summary,
+                definition.Available && playable));
+        }
+
+        return modes.AsReadOnly();
     }
 }

@@ -1,0 +1,9 @@
+{
+  "order": 3,
+  "mode": "Diagnosis",
+  "index": "04",
+  "title": "故障诊断",
+  "code": "DIAGNOSTICS",
+  "summary": "只凭症状与实测功耗曲线定位故障，在唯一一次替换额度内，把黑屏整机真正修好。",
+  "available": true
+}

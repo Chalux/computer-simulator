@@ -1,0 +1,9 @@
+{
+  "order": 1,
+  "mode": "Marketplace",
+  "index": "02",
+  "title": "二手市场",
+  "code": "MARKET",
+  "summary": "按周期与成色选购二手配件，在成本与风险之间权衡，凑出一台可用的整机。",
+  "available": false
+}

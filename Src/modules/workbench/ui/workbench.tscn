@@ -1,0 +1,648 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://Src/modules/workbench/ClearanceWorkbench.cs" id="1_screen"]
+[ext_resource type="Script" path="res://Src/modules/inspection/BenchViewport.cs" id="2_viewport"]
+[ext_resource type="Script" path="res://Src/modules/inspection/SectionDrawing.cs" id="3_section"]
+[ext_resource type="PackedScene" path="res://Src/modules/benchmark/ui/benchmark_report.tscn" id="4_report"]
+
+[node name="ClearanceWorkbench" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+script = ExtResource("1_screen")
+
+[node name="Frame" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Page" type="VBoxContainer" parent="Frame"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Masthead" type="HBoxContainer" parent="Frame/Page"]
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Titles" type="VBoxContainer" parent="Frame/Page/Masthead"]
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_constants/separation = 1
+
+[node name="Wordmark" type="HBoxContainer" parent="Frame/Page/Masthead/Titles"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="PcWordmark" type="Label" parent="Frame/Page/Masthead/Titles/Wordmark"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+text = "PC"
+
+[node name="ArchWordmark" type="Label" parent="Frame/Page/Masthead/Titles/Wordmark"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+text = "ARCHITECT"
+
+[node name="TitleLabel" type="Label" parent="Frame/Page/Masthead/Titles"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+text = "沙盒工作台"
+
+[node name="MastheadExpander" type="Control" parent="Frame/Page/Masthead"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="StatusChip" type="PanelContainer" parent="Frame/Page/Masthead"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+
+[node name="Status" type="Label" parent="Frame/Page/Masthead/StatusChip"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+
+[node name="MenuButton" type="Button" parent="Frame/Page/Masthead"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(86, 28)
+layout_mode = 2
+size_flags_vertical = 4
+focus_mode = 2
+text = "模式选择"
+
+[node name="MastheadRule" type="ColorRect" parent="Frame/Page"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 1)
+mouse_filter = 2
+color = Color(0.149, 0.2, 0.227, 1)
+
+[node name="Columns" type="HBoxContainer" parent="Frame/Page"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 14
+
+[node name="Views" type="TabContainer" parent="Frame/Page/Columns"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="AssemblyView" type="MarginContainer" parent="Frame/Page/Columns/Views"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="Visual" type="VBoxContainer" parent="Frame/Page/Columns/Views/AssemblyView"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="ViewToolbar" type="HBoxContainer" parent="Frame/Page/Columns/Views/AssemblyView/Visual"]
+custom_minimum_size = Vector2(0, 28)
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ViewLabel" type="Label" parent="Frame/Page/Columns/Views/AssemblyView/Visual/ViewToolbar"]
+layout_mode = 2
+mouse_filter = 2
+text = "视图"
+
+[node name="ViewRail" type="PanelContainer" parent="Frame/Page/Columns/Views/AssemblyView/Visual/ViewToolbar"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+
+[node name="ViewRow" type="HBoxContainer" parent="Frame/Page/Columns/Views/AssemblyView/Visual/ViewToolbar/ViewRail"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="View0" type="Button" parent="Frame/Page/Columns/Views/AssemblyView/Visual/ViewToolbar/ViewRail/ViewRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(42, 26)
+layout_mode = 2
+size_flags_vertical = 4
+focus_mode = 2
+toggle_mode = true
+button_pressed = true
+text = "轴测"
+
+[node name="View1" type="Button" parent="Frame/Page/Columns/Views/AssemblyView/Visual/ViewToolbar/ViewRail/ViewRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(42, 26)
+layout_mode = 2
+size_flags_vertical = 4
+focus_mode = 2
+toggle_mode = true
+text = "正视"
+
+[node name="View2" type="Button" parent="Frame/Page/Columns/Views/AssemblyView/Visual/ViewToolbar/ViewRail/ViewRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(42, 26)
+layout_mode = 2
+size_flags_vertical = 4
+focus_mode = 2
+toggle_mode = true
+text = "侧视"
+
+[node name="View3" type="Button" parent="Frame/Page/Columns/Views/AssemblyView/Visual/ViewToolbar/ViewRail/ViewRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(42, 26)
+layout_mode = 2
+size_flags_vertical = 4
+focus_mode = 2
+toggle_mode = true
+text = "俯视"
+
+[node name="View4" type="Button" parent="Frame/Page/Columns/Views/AssemblyView/Visual/ViewToolbar/ViewRail/ViewRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(42, 26)
+layout_mode = 2
+size_flags_vertical = 4
+focus_mode = 2
+toggle_mode = true
+text = "特写"
+
+[node name="ToolbarExpander" type="Control" parent="Frame/Page/Columns/Views/AssemblyView/Visual/ViewToolbar"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="SidePanelCheck" type="CheckBox" parent="Frame/Page/Columns/Views/AssemblyView/Visual/ViewToolbar"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+focus_mode = 2
+text = "透明侧板"
+
+[node name="RgbCheck" type="CheckBox" parent="Frame/Page/Columns/Views/AssemblyView/Visual/ViewToolbar"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+focus_mode = 2
+button_pressed = true
+text = "ARGB"
+
+[node name="StagePanel" type="PanelContainer" parent="Frame/Page/Columns/Views/AssemblyView/Visual"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Viewport" type="SubViewportContainer" parent="Frame/Page/Columns/Views/AssemblyView/Visual/StagePanel"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 180)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 0
+script = ExtResource("2_viewport")
+
+[node name="InstrumentStrip" type="PanelContainer" parent="Frame/Page/Columns/Views/AssemblyView/Visual"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 160)
+layout_mode = 2
+
+[node name="StripGrid" type="GridContainer" parent="Frame/Page/Columns/Views/AssemblyView/Visual/InstrumentStrip"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+columns = 2
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 10
+
+[node name="SectionCell" type="HBoxContainer" parent="Frame/Page/Columns/Views/AssemblyView/Visual/InstrumentStrip/StripGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(286, 0)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="SectionColumn" type="VBoxContainer" parent="Frame/Page/Columns/Views/AssemblyView/Visual/InstrumentStrip/StripGrid/SectionCell"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 5
+
+[node name="SectionHead" type="HBoxContainer" parent="Frame/Page/Columns/Views/AssemblyView/Visual/InstrumentStrip/StripGrid/SectionCell/SectionColumn"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="SectionTitle" type="Label" parent="Frame/Page/Columns/Views/AssemblyView/Visual/InstrumentStrip/StripGrid/SectionCell/SectionColumn/SectionHead"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+text = "正交剖面"
+
+[node name="SectionNote" type="Label" parent="Frame/Page/Columns/Views/AssemblyView/Visual/InstrumentStrip/StripGrid/SectionCell/SectionColumn/SectionHead"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+text = "红色为干涉区域"
+
+[node name="SectionFrame" type="PanelContainer" parent="Frame/Page/Columns/Views/AssemblyView/Visual/InstrumentStrip/StripGrid/SectionCell/SectionColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Section" type="Control" parent="Frame/Page/Columns/Views/AssemblyView/Visual/InstrumentStrip/StripGrid/SectionCell/SectionColumn/SectionFrame"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 2
+script = ExtResource("3_section")
+
+[node name="SectionDivider" type="ColorRect" parent="Frame/Page/Columns/Views/AssemblyView/Visual/InstrumentStrip/StripGrid/SectionCell"]
+layout_mode = 2
+custom_minimum_size = Vector2(1, 0)
+size_flags_vertical = 3
+mouse_filter = 2
+color = Color(0.106, 0.145, 0.169, 0.9)
+
+[node name="Diagnostics" type="VBoxContainer" parent="Frame/Page/Columns/Views/AssemblyView/Visual/InstrumentStrip/StripGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 5
+
+[node name="MetricsTitle" type="Label" parent="Frame/Page/Columns/Views/AssemblyView/Visual/InstrumentStrip/StripGrid/Diagnostics"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+text = "装配诊断"
+
+[node name="Metrics" type="Label" parent="Frame/Page/Columns/Views/AssemblyView/Visual/InstrumentStrip/StripGrid/Diagnostics"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+autowrap_mode = 3
+
+[node name="Messages" type="Label" parent="Frame/Page/Columns/Views/AssemblyView/Visual/InstrumentStrip/StripGrid/Diagnostics"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 1
+autowrap_mode = 3
+
+[node name="ReportView" parent="Frame/Page/Columns/Views" instance=ExtResource("4_report")]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="Inspector" type="PanelContainer" parent="Frame/Page/Columns"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(334, 0)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="InspectorBody" type="VBoxContainer" parent="Frame/Page/Columns/Inspector"]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="CommissionChecklist" type="PanelContainer" parent="Frame/Page/Columns/Inspector/InspectorBody"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="Checklist" type="VBoxContainer" parent="Frame/Page/Columns/Inspector/InspectorBody/CommissionChecklist"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="ChecklistHeading" type="Label" parent="Frame/Page/Columns/Inspector/InspectorBody/CommissionChecklist/Checklist"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+text = "交付验收"
+
+[node name="BudgetCheck" type="Label" parent="Frame/Page/Columns/Inspector/InspectorBody/CommissionChecklist/Checklist"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+autowrap_mode = 3
+
+[node name="GpuCheck" type="Label" parent="Frame/Page/Columns/Inspector/InspectorBody/CommissionChecklist/Checklist"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+autowrap_mode = 3
+
+[node name="MemoryCheck" type="Label" parent="Frame/Page/Columns/Inspector/InspectorBody/CommissionChecklist/Checklist"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+autowrap_mode = 3
+
+[node name="TestCheck" type="Label" parent="Frame/Page/Columns/Inspector/InspectorBody/CommissionChecklist/Checklist"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+autowrap_mode = 3
+
+[node name="DeliveryError" type="Label" parent="Frame/Page/Columns/Inspector/InspectorBody/CommissionChecklist/Checklist"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+mouse_filter = 2
+autowrap_mode = 3
+
+[node name="CommissionActions" type="HBoxContainer" parent="Frame/Page/Columns/Inspector/InspectorBody/CommissionChecklist/Checklist"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="CommissionRunLoad" type="Button" parent="Frame/Page/Columns/Inspector/InspectorBody/CommissionChecklist/Checklist/CommissionActions"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 2
+text = "运行负载测试"
+
+[node name="DeliverButton" type="Button" parent="Frame/Page/Columns/Inspector/InspectorBody/CommissionChecklist/Checklist/CommissionActions"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 2
+disabled = true
+text = "交付整机"
+
+[node name="InspectorScroll" type="ScrollContainer" parent="Frame/Page/Columns/Inspector/InspectorBody"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+follow_focus = true
+
+[node name="InspectorPad" type="MarginContainer" parent="Frame/Page/Columns/Inspector/InspectorBody/InspectorScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 12
+
+[node name="Form" type="VBoxContainer" parent="Frame/Page/Columns/Inspector/InspectorBody/InspectorScroll/InspectorPad"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="Goal" type="Label" parent="Frame/Page/Columns/Inspector/InspectorBody/InspectorScroll/InspectorPad/Form"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+autowrap_mode = 3
+
+[node name="HardwareName" type="Label" parent="Frame/Page/Columns/Inspector/InspectorBody/InspectorScroll/InspectorPad/Form"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+autowrap_mode = 3
+
+[node name="InventoryPanel" type="PanelContainer" parent="Frame/Page/Columns/Inspector/InspectorBody/InspectorScroll/InspectorPad/Form"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="CrateInventory" type="Label" parent="Frame/Page/Columns/Inspector/InspectorBody/InspectorScroll/InspectorPad/Form/InventoryPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+autowrap_mode = 3
+
+[node name="FormRule" type="ColorRect" parent="Frame/Page/Columns/Inspector/InspectorBody/InspectorScroll/InspectorPad/Form"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 1)
+mouse_filter = 2
+color = Color(0.106, 0.145, 0.169, 1)
+
+[node name="ScenarioField" type="VBoxContainer" parent="Frame/Page/Columns/Inspector/InspectorBody/InspectorScroll/InspectorPad/Form"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="ScenarioCaption" type="Label" parent="Frame/Page/Columns/Inspector/InspectorBody/InspectorScroll/InspectorPad/Form/ScenarioField"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+text = "装配方案"
+
+[node name="ScenarioChoice" type="OptionButton" parent="Frame/Page/Columns/Inspector/InspectorBody/InspectorScroll/InspectorPad/Form/ScenarioField"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 2
+
+[node name="CaseField" type="VBoxContainer" parent="Frame/Page/Columns/Inspector/InspectorBody/InspectorScroll/InspectorPad/Form"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="CaseCaption" type="Label" parent="Frame/Page/Columns/Inspector/InspectorBody/InspectorScroll/InspectorPad/Form/CaseField"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+text = "机箱"
+
+[node name="CaseChoice" type="OptionButton" parent="Frame/Page/Columns/Inspector/InspectorBody/InspectorScroll/InspectorPad/Form/CaseField"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 2
+
+[node name="WaterFields" type="VBoxContainer" parent="Frame/Page/Columns/Inspector/InspectorBody/InspectorScroll/InspectorPad/Form"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="GpuCaption" type="Label" parent="Frame/Page/Columns/Inspector/InspectorBody/InspectorScroll/InspectorPad/Form/WaterFields"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+text = "显卡型号"
+
+[node name="GpuChoice" type="OptionButton" parent="Frame/Page/Columns/Inspector/InspectorBody/InspectorScroll/InspectorPad/Form/WaterFields"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 2
+
+[node name="MemoryField" type="VBoxContainer" parent="Frame/Page/Columns/Inspector/InspectorBody/InspectorScroll/InspectorPad/Form"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="MemoryCaption" type="Label" parent="Frame/Page/Columns/Inspector/InspectorBody/InspectorScroll/InspectorPad/Form/MemoryField"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+text = "内存型号"
+
+[node name="MemoryChoice" type="OptionButton" parent="Frame/Page/Columns/Inspector/InspectorBody/InspectorScroll/InspectorPad/Form/MemoryField"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 2
+
+[node name="SlotsField" type="VBoxContainer" parent="Frame/Page/Columns/Inspector/InspectorBody/InspectorScroll/InspectorPad/Form"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="SlotsCaption" type="Label" parent="Frame/Page/Columns/Inspector/InspectorBody/InspectorScroll/InspectorPad/Form/SlotsField"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+text = "已安装的内存插槽"
+
+[node name="SlotsRow" type="HBoxContainer" parent="Frame/Page/Columns/Inspector/InspectorBody/InspectorScroll/InspectorPad/Form/SlotsField"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="AirFields" type="VBoxContainer" parent="Frame/Page/Columns/Inspector/InspectorBody/InspectorScroll/InspectorPad/Form"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="OffsetHead" type="HBoxContainer" parent="Frame/Page/Columns/Inspector/InspectorBody/InspectorScroll/InspectorPad/Form/AirFields"]
+layout_mode = 2
+
+[node name="OffsetCaption" type="Label" parent="Frame/Page/Columns/Inspector/InspectorBody/InspectorScroll/InspectorPad/Form/AirFields/OffsetHead"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+text = "前扇上移"
+
+[node name="OffsetText" type="Label" parent="Frame/Page/Columns/Inspector/InspectorBody/InspectorScroll/InspectorPad/Form/AirFields/OffsetHead"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+
+[node name="Offset" type="HSlider" parent="Frame/Page/Columns/Inspector/InspectorBody/InspectorScroll/InspectorPad/Form/AirFields"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 22)
+layout_mode = 2
+focus_mode = 2
+step = 1.0
+
+[node name="LoadPanel" type="PanelContainer" parent="Frame/Page/Columns/Inspector/InspectorBody/InspectorScroll/InspectorPad/Form"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Power" type="VBoxContainer" parent="Frame/Page/Columns/Inspector/InspectorBody/InspectorScroll/InspectorPad/Form/LoadPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="LoadHeading" type="Label" parent="Frame/Page/Columns/Inspector/InspectorBody/InspectorScroll/InspectorPad/Form/LoadPanel/Power"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+text = "整机负载测试"
+
+[node name="ConditionsField" type="VBoxContainer" parent="Frame/Page/Columns/Inspector/InspectorBody/InspectorScroll/InspectorPad/Form/LoadPanel/Power"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="ConditionsCaption" type="Label" parent="Frame/Page/Columns/Inspector/InspectorBody/InspectorScroll/InspectorPad/Form/LoadPanel/Power/ConditionsField"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+text = "目标用途与通风工况"
+
+[node name="Conditions" type="HBoxContainer" parent="Frame/Page/Columns/Inspector/InspectorBody/InspectorScroll/InspectorPad/Form/LoadPanel/Power/ConditionsField"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="WorkloadChoice" type="OptionButton" parent="Frame/Page/Columns/Inspector/InspectorBody/InspectorScroll/InspectorPad/Form/LoadPanel/Power/ConditionsField/Conditions"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 2
+
+[node name="AirflowChoice" type="OptionButton" parent="Frame/Page/Columns/Inspector/InspectorBody/InspectorScroll/InspectorPad/Form/LoadPanel/Power/ConditionsField/Conditions"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 2
+
+[node name="PsuField" type="VBoxContainer" parent="Frame/Page/Columns/Inspector/InspectorBody/InspectorScroll/InspectorPad/Form/LoadPanel/Power"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="PsuCaption" type="Label" parent="Frame/Page/Columns/Inspector/InspectorBody/InspectorScroll/InspectorPad/Form/LoadPanel/Power/PsuField"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+text = "测试电源"
+
+[node name="PsuChoice" type="OptionButton" parent="Frame/Page/Columns/Inspector/InspectorBody/InspectorScroll/InspectorPad/Form/LoadPanel/Power/PsuField"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 2
+
+[node name="PowerRunLoad" type="Button" parent="Frame/Page/Columns/Inspector/InspectorBody/InspectorScroll/InspectorPad/Form/LoadPanel/Power"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 2
+text = "运行整机负载测试"
+
+[node name="PowerResult" type="Label" parent="Frame/Page/Columns/Inspector/InspectorBody/InspectorScroll/InspectorPad/Form/LoadPanel/Power"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+autowrap_mode = 3
+
+[node name="SubmitButton" type="Button" parent="Frame/Page/Columns/Inspector/InspectorBody/InspectorScroll/InspectorPad/Form/LoadPanel/Power"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+focus_mode = 2
+disabled = true
+text = "提交首箱评分"
+
+[node name="ReplayButton" type="Button" parent="Frame/Page/Columns/Inspector/InspectorBody/InspectorScroll/InspectorPad/Form/LoadPanel/Power"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+focus_mode = 2
+text = "再次挑战"
+
+[node name="CrateResult" type="Label" parent="Frame/Page/Columns/Inspector/InspectorBody/InspectorScroll/InspectorPad/Form/LoadPanel/Power"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+mouse_filter = 2
+autowrap_mode = 3
+
+[node name="ResetButton" type="Button" parent="Frame/Page/Columns/Inspector/InspectorBody/InspectorScroll/InspectorPad/Form"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 2
+text = "还原初始配置"

@@ -1,0 +1,149 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://Src/modules/menu/ModeSelectScreen.cs" id="1_screen"]
+[ext_resource type="Script" path="res://Src/modules/menu/TechBackdrop.cs" id="2_backdrop"]
+[ext_resource type="Script" path="res://Src/modules/menu/TechShowcase.cs" id="3_showcase"]
+
+[node name="ModeSelectScreen" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+script = ExtResource("1_screen")
+
+[node name="Backdrop" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("2_backdrop")
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 72
+theme_override_constants/margin_top = 60
+theme_override_constants/margin_right = 72
+theme_override_constants/margin_bottom = 34
+
+[node name="Page" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 0
+
+[node name="Content" type="HBoxContainer" parent="Margin/Page"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 24
+
+[node name="Left" type="VBoxContainer" parent="Margin/Page/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(540, 0)
+layout_mode = 2
+size_flags_horizontal = 1
+size_flags_vertical = 3
+theme_override_constants/separation = 0
+
+[node name="TitleHost" type="VBoxContainer" parent="Margin/Page/Content/Left"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="TitleSpace" type="Control" parent="Margin/Page/Content/Left"]
+custom_minimum_size = Vector2(0, 8)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="RuleHost" type="VBoxContainer" parent="Margin/Page/Content/Left"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="SubtitleSpace" type="Control" parent="Margin/Page/Content/Left"]
+custom_minimum_size = Vector2(0, 12)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Subtitle" type="Label" parent="Margin/Page/Content/Left"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+text = "选 择 模 式"
+
+[node name="GridSpace" type="Control" parent="Margin/Page/Content/Left"]
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="MenuRuleHost" type="VBoxContainer" parent="Margin/Page/Content/Left"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="Grid" type="GridContainer" parent="Margin/Page/Content/Left"]
+unique_name_in_owner = true
+layout_mode = 2
+columns = 2
+theme_override_constants/h_separation = 24
+theme_override_constants/v_separation = 0
+
+[node name="Spacer" type="Control" parent="Margin/Page/Content/Left"]
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+
+[node name="Divider" type="ColorRect" parent="Margin/Page/Content"]
+layout_mode = 2
+custom_minimum_size = Vector2(1, 0)
+size_flags_vertical = 3
+mouse_filter = 2
+color = Color(0.102, 0.141, 0.161, 0.45)
+
+[node name="Showcase" type="Control" parent="Margin/Page/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 2
+script = ExtResource("3_showcase")
+
+[node name="Footer" type="VBoxContainer" parent="Margin/Page"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="FooterRule" type="ColorRect" parent="Margin/Page/Footer"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 1)
+mouse_filter = 2
+color = Color(0.102, 0.141, 0.161, 0.55)
+
+[node name="Row" type="HBoxContainer" parent="Margin/Page/Footer"]
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Expander" type="Control" parent="Margin/Page/Footer/Row"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="BackButton" type="Button" parent="Margin/Page/Footer/Row"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+size_flags_vertical = 4
+focus_mode = 2
+mouse_default_cursor_shape = 2
+text = "返回主菜单   ESC"

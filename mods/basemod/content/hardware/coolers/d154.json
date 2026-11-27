@@ -1,0 +1,14 @@
+{
+  "order": 0,
+  "name": "光谱工坊 D154 ARGB",
+  "kind": "air",
+  "price": 0,
+  "body_aabb": [
+    { "origin": [54, 38, 60], "size": [34, 116, 120] },
+    { "origin": [99, 38, 60], "size": [36, 116, 120] }
+  ],
+  "fan_aabb": { "origin": [135, 42, 64], "size": [25, 112, 112] },
+  "adjustable_y_max": 15,
+  "asset": "assets/models/coolers/tower.glb",
+  "fanAsset": "assets/models/coolers/front_fan.glb"
+}

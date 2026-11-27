@@ -1,0 +1,13 @@
+{
+  "order": 0,
+  "name": "窄体机箱",
+  "price": 399,
+  "heightLimit": 160,
+  "gpuLimit": 365,
+  "psuLimit": 170,
+  "psuAnchor": [1, 0, 274],
+  "naturalAirflow": 0.40,
+  "color": "黑",
+  "formFactor": "mATX",
+  "asset": "assets/models/cases/narrow.glb"
+}

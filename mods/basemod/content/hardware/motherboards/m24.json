@@ -1,0 +1,19 @@
+{
+  "order": 0,
+  "name": "战未来 M24 · 双通道 DDR5",
+  "price": 899,
+  "dimensions": [244, 244, 2],
+  "processorAnchor": [66, 7.5, 99],
+  "storageAnchor": [32, 2, 156],
+  "slots": [
+    { "name": "A1", "channel": "A", "anchor": [130, 0, 55] },
+    { "name": "A2", "channel": "A", "anchor": [144, 0, 55] },
+    { "name": "B1", "channel": "B", "anchor": [165, 0, 55] },
+    { "name": "B2", "channel": "B", "anchor": [179, 0, 55] }
+  ],
+  "maxRate": 5600,
+  "vrmWatts": 205,
+  "color": "黑",
+  "formFactor": "mATX",
+  "asset": "assets/models/motherboards/m24.glb"
+}

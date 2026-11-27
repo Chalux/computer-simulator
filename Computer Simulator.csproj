@@ -10,7 +10,6 @@
   </PropertyGroup>
   <ItemGroup>
     <EmbeddedResource Include="Resource/agents/default-agent/builtins/benchmark.mjs" LogicalName="Benchmark.Rules" />
-    <EmbeddedResource Include="Resource/hardware/clearance-bench.json" LogicalName="Clearance.Catalog" />
     <EmbeddedResource Include="Resource/agents/default-agent/builtins/assembly-fit.mjs" LogicalName="Clearance.Rules" />
     <ProjectReference Include="Src/frame/mvc/Generators/KemoCard.Mvc.Generators/KemoCard.Mvc.Generators.csproj"
                       OutputItemType="Analyzer" ReferenceOutputAssembly="false" />

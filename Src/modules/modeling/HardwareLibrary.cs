@@ -1,54 +1,130 @@
+using System.IO;
 using Godot;
 
 namespace ComputerSimulator.Modules.Modeling;
 
-// Shared mesh library. Repeated fins, fasteners, electronics and blades are instanced per material.
-internal sealed class HardwareLibrary
+/// <summary>
+/// 外部 Blender 资产库。res:// 资产走 Godot 已导入的 <see cref="PackedScene"/>；
+/// 磁盘上的 .glb/.gltf（内容 Mod、user:// 或绝对路径）走 <see cref="GltfDocument"/> 运行时导入。
+/// 模板按路径缓存，调用方拿到的是独立实例，并负责在卸载时释放。
+/// </summary>
+internal sealed class HardwareLibrary : IDisposable
 {
-    public readonly Mesh Cube = new BoxMesh();
-    public readonly Mesh Barrel = new CylinderMesh { TopRadius = .5f, BottomRadius = .5f, Height = 1, RadialSegments = 28, Rings = 0 };
-    public readonly Mesh Shell = MachinedMeshes.FanShell(false), Ring = MachinedMeshes.FanShell(true), Blades = MachinedMeshes.Impeller();
-    public readonly ShaderMaterial Led = new() { Shader = GD.Load<Shader>("res://Resource/hardware/argb.gdshader") };
-    private readonly Dictionary<(Vector3, float, float), Mesh> _profiles = new();
-    private readonly Dictionary<(Vector3, int), Mesh> _fascias = new();
-    private readonly Dictionary<string, StandardMaterial3D> _materials = new();
+    private readonly Dictionary<string, PackedScene> _imported = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, ExternalEntry> _external = new(StringComparer.Ordinal);
+    private bool _disposed;
 
-    public Mesh Profile(Vector3 size, float corner, float bevel)
-    {
-        var key = (size, corner, bevel);
-        if (!_profiles.TryGetValue(key, out var mesh)) _profiles[key] = mesh = MachinedMeshes.Enclosure(size, corner, bevel);
-        return mesh;
-    }
+    private readonly record struct ExternalEntry(DateTime Stamp, Node3D Template);
 
-    public Mesh Fascia(Vector3 extent, int count, float radius)
+    /// <summary>创建资产实例；路径无效、缺失或导入失败时返回 null（由调用方跳过并稍后重试）。</summary>
+    public Node3D? TryCreate(string? path)
     {
-        var key = (extent, count);
-        if (!_fascias.TryGetValue(key, out var mesh)) _fascias[key] = mesh = MachinedMeshes.CardFascia(extent.X, extent.Y, count, radius);
-        return mesh;
-    }
-
-    public Material Finish(string key)
-    {
-        if (key == "led") return Led;
-        if (_materials.TryGetValue(key, out var mat)) return mat;
-        (string color, float metal, float rough) = key switch
+        if (_disposed || !IsSupported(path)) return null;
+        string value = path!;
+        try
         {
-            "shell" => ("#333d4c", .45f, .34f),
-            "black" => ("#161c26", .12f, .42f),
-            "inset" => ("#0e131a", .05f, .48f),
-            "graphite" => ("#576371", .69f, .33f),
-            "fin" => ("#86929e", .63f, .48f),
-            "edge" => ("#cdd9de", .72f, .27f),
-            "pipe" => ("#bd815c", .65f, .29f),
-            "gold" => ("#d4ac6a", .60f, .34f),
-            "pcb" => ("#163532", .12f, .44f),
-            "trace" => ("#476256", .45f, .43f),
-            "silk" => ("#bbc5c3", .1f, .55f),
-            "blade" => ("#657080", .18f, .43f),
-            "teal" => ("#445b72", .67f, .31f),
-            "chip" => ("#272b2f", .06f, .64f),
-            _ => throw new ArgumentOutOfRangeException(nameof(key), key, "未知硬件材质")
-        };
-        return _materials[key] = new StandardMaterial3D { AlbedoColor = new Color(color), Metallic = metal, Roughness = rough };
+            return IsImported(value)
+                ? CreateImported(value)
+                : CreateExternal(value);
+        }
+        catch (Exception ex)
+        {
+            GD.PushWarning($"加载硬件资产失败：{path}（{ex.Message}）");
+            return null;
+        }
+    }
+
+    /// <summary>校验路径是否指向一个当前可用的资产（res:// 已导入，或磁盘文件存在）。</summary>
+    public static bool IsAvailable(string? path)
+    {
+        if (!IsSupported(path)) return false;
+        string value = path!;
+        try
+        {
+            return IsImported(value)
+                ? ResourceLoader.Exists(value)
+                : File.Exists(ToSystemPath(value));
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>.glb/.gltf，且拒绝包含 .. 的路径穿越。</summary>
+    public static bool IsSupported(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return false;
+        string extension = Path.GetExtension(path).ToLowerInvariant();
+        if (extension is not (".glb" or ".gltf")) return false;
+        foreach (string segment in path.Replace('\\', '/').Split('/'))
+            if (segment == "..") return false;
+        return true;
+    }
+
+    private Node3D? CreateImported(string path)
+    {
+        if (!_imported.TryGetValue(path, out var scene))
+        {
+            if (!ResourceLoader.Exists(path)) return null;
+            scene = ResourceLoader.Load<PackedScene>(path);
+            if (scene is null) return null;
+            _imported[path] = scene;
+        }
+        return scene.Instantiate() as Node3D;
+    }
+
+    private Node3D? CreateExternal(string path)
+    {
+        string file = ToSystemPath(path);
+        if (!File.Exists(file)) return null;
+
+        var stamp = File.GetLastWriteTimeUtc(file);
+        if (!_external.TryGetValue(file, out var entry) || entry.Stamp != stamp)
+        {
+            if (entry.Template is not null && GodotObject.IsInstanceValid(entry.Template))
+                entry.Template.Free();
+            var template = LoadGltf(file);
+            if (template is null)
+            {
+                _external.Remove(file);
+                return null;
+            }
+            entry = new ExternalEntry(stamp, template);
+            _external[file] = entry;
+        }
+
+        return entry.Template.Duplicate() as Node3D;
+    }
+
+    private static Node3D? LoadGltf(string file)
+    {
+        var document = new GltfDocument();
+        var state = new GltfState();
+        var error = document.AppendFromFile(file, state);
+        if (error != Error.Ok)
+        {
+            GD.PushWarning($"GLTF 导入失败：{file}（{error}）");
+            return null;
+        }
+        return document.GenerateScene(state) as Node3D;
+    }
+
+    private static bool IsImported(string path) => path.StartsWith("res://", StringComparison.Ordinal);
+
+    private static string ToSystemPath(string path)
+        => path.StartsWith("res://", StringComparison.Ordinal) || path.StartsWith("user://", StringComparison.Ordinal)
+            ? ProjectSettings.GlobalizePath(path)
+            : path;
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        foreach (var entry in _external.Values)
+            if (entry.Template is not null && GodotObject.IsInstanceValid(entry.Template))
+                entry.Template.Free();
+        _external.Clear();
+        _imported.Clear();
     }
 }

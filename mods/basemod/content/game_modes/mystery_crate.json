@@ -1,0 +1,9 @@
+{
+  "order": 2,
+  "mode": "MysteryCrate",
+  "index": "03",
+  "title": "神秘箱 · 首箱",
+  "code": "MYSTERY CRATE",
+  "summary": "打开 03 首箱，只能从箱内挑选机箱、显卡与电源，配出能通过 4K 负载测试的整机并提交综合评分。",
+  "available": true
+}

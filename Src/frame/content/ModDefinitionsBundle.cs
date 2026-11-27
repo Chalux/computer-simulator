@@ -1,4 +1,5 @@
 using KemoCard.Frame.Content.Definitions;
+using KemoCard.Frame.Content.Simulator;
 
 namespace KemoCard.Frame.Content;
 
@@ -18,7 +19,20 @@ public sealed record ModDefinitionsBundle(
     IReadOnlyDictionary<string, SkillActionDto> SkillActions,
     IReadOnlyDictionary<string, StoryDto> Stories,
     /// <summary>充能球类型（内建 6 种由 base-game 声明；Mod 在此注册特殊球）。</summary>
-    IReadOnlyDictionary<string, OrbTypeDto> OrbTypes)
+    IReadOnlyDictionary<string, OrbTypeDto> OrbTypes,
+    IReadOnlyDictionary<string, HardwareCaseDto> Cases,
+    IReadOnlyDictionary<string, HardwareMotherboardDto> Motherboards,
+    IReadOnlyDictionary<string, HardwareProcessorDto> Processors,
+    IReadOnlyDictionary<string, HardwareGraphicsCardDto> GraphicsCards,
+    IReadOnlyDictionary<string, HardwareMemoryDto> MemoryModules,
+    IReadOnlyDictionary<string, HardwareStorageDto> StorageDevices,
+    IReadOnlyDictionary<string, HardwareCoolerDto> Coolers,
+    IReadOnlyDictionary<string, HardwarePowerSupplyDto> PowerSupplies,
+    IReadOnlyDictionary<string, CommissionDefinitionDto> Commissions,
+    IReadOnlyDictionary<string, DiagnosisCaseDefinitionDto> DiagnosisCases,
+    IReadOnlyDictionary<string, BenchmarkDefinitionDto> Benchmarks,
+    IReadOnlyDictionary<string, GameModeDefinitionDto> GameModes,
+    IReadOnlyDictionary<string, ChallengeDefinitionDto> Challenges)
 {
     public static ModDefinitionsBundle Empty { get; } = new(
         new Dictionary<string, CharacterDto>(StringComparer.Ordinal),
@@ -35,5 +49,20 @@ public sealed record ModDefinitionsBundle(
         new Dictionary<string, GameplayTagDefDto>(StringComparer.Ordinal),
         new Dictionary<string, SkillActionDto>(StringComparer.Ordinal),
         new Dictionary<string, StoryDto>(StringComparer.Ordinal),
-        new Dictionary<string, OrbTypeDto>(StringComparer.Ordinal));
+        new Dictionary<string, OrbTypeDto>(StringComparer.Ordinal),
+        EmptySim<HardwareCaseDto>(),
+        EmptySim<HardwareMotherboardDto>(),
+        EmptySim<HardwareProcessorDto>(),
+        EmptySim<HardwareGraphicsCardDto>(),
+        EmptySim<HardwareMemoryDto>(),
+        EmptySim<HardwareStorageDto>(),
+        EmptySim<HardwareCoolerDto>(),
+        EmptySim<HardwarePowerSupplyDto>(),
+        EmptySim<CommissionDefinitionDto>(),
+        EmptySim<DiagnosisCaseDefinitionDto>(),
+        EmptySim<BenchmarkDefinitionDto>(),
+        EmptySim<GameModeDefinitionDto>(),
+        EmptySim<ChallengeDefinitionDto>());
+
+    private static Dictionary<string, T> EmptySim<T>() => new(StringComparer.Ordinal);
 }

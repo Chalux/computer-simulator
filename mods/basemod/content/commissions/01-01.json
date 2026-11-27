@@ -1,0 +1,12 @@
+{
+  "order": 0,
+  "title": "预算内的高刷主机",
+  "customerMessage": "我想在 1080p 下打高刷游戏。显卡用刀法精工 Twin，内存至少 32 GB，装好后麻烦跑一次负载测试。",
+  "modeLabel": "1080p 高刷游戏",
+  "requiredGpuId": "twin",
+  "budget": 6900,
+  "buildFee": 200,
+  "minimumMemoryGb": 32,
+  "workloadId": "gaming_1080p",
+  "requiresFront360": true
+}

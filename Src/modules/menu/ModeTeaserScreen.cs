@@ -1,40 +1,33 @@
 using Godot;
+using KemoCard.Frame.UI.Base;
 
 namespace ComputerSimulator.Modules.Menu;
 
 /// <summary>
-/// 尚未开放模式的通用简报页。三个占位模式共用这一页，
-/// 只读取 <see cref="GameModeCatalog"/> 中的名称与玩法简介。
+/// 尚未开放模式的通用简报页；模式通过强类型路由载荷传入，不再由组合根在入树前写属性。
 /// </summary>
-public partial class ModeTeaserScreen : Control
+public partial class ModeTeaserScreen : BaseWin
 {
     public event Action? BackRequested;
 
-    /// <summary>要展示的模式，必须在 AddChild 之前赋值。</summary>
-    public GameMode Mode { get; set; } = GameMode.Commission;
-
     private PanelContainer _panel = null!;
+    private Label _title = null!;
+    private Label _summary = null!;
     private TechMenuItem _back = null!;
 
-    public override void _Ready()
+    public override string UIId => UiRoutes.ModeBrief;
+    public override string UIDir => UiRoutes.MenuDir;
+
+    protected override void OnCreate()
     {
         SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         Theme = MenuPalette.CreateTheme();
         MouseFilter = MouseFilterEnum.Stop;
 
-        Build(GameModeCatalog.Get(Mode));
-        PlayIntro();
-    }
-
-    private void Build(GameModeInfo info)
-    {
-        var backdrop = new TechBackdrop();
-        AddChild(backdrop);
-        backdrop.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-
-        var center = new CenterContainer { MouseFilter = MouseFilterEnum.Ignore };
-        AddChild(center);
-        center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        _panel = GetNode<PanelContainer>("%Panel");
+        _title = GetNode<Label>("%Title");
+        _summary = GetNode<Label>("%Summary");
+        _back = GetNode<TechMenuItem>("%BackItem");
 
         StyleBoxFlat panelStyle = MenuPalette.Box(
             MenuPalette.Alpha(MenuPalette.Graphite, 0.985f),
@@ -43,47 +36,47 @@ public partial class ModeTeaserScreen : Control
         panelStyle.ContentMarginRight = 34;
         panelStyle.ContentMarginTop = 28;
         panelStyle.ContentMarginBottom = 28;
-
-        _panel = new PanelContainer { CustomMinimumSize = new Vector2(660, 0) };
         _panel.AddThemeStyleboxOverride("panel", panelStyle);
-        center.AddChild(_panel);
 
-        var body = new VBoxContainer();
-        body.AddThemeConstantOverride("separation", 0);
-        _panel.AddChild(body);
+        _title.AddThemeFontOverride("font", MenuPalette.Text);
+        _title.AddThemeFontSizeOverride("font_size", 34);
+        _title.AddThemeColorOverride("font_color", MenuPalette.Platinum);
 
-        body.AddChild(Text(info.Title, 34, MenuPalette.Platinum));
+        _summary.AddThemeFontOverride("font", MenuPalette.Text);
+        _summary.AddThemeFontSizeOverride("font_size", 15);
+        _summary.AddThemeColorOverride("font_color", MenuPalette.Alpha(MenuPalette.Platinum, 0.86f));
+        _summary.AutowrapMode = TextServer.AutowrapMode.WordSmart;
 
-        body.AddChild(VSpace(16));
+        Label status = GetNode<Label>("%Status");
+        status.AddThemeFontOverride("font", MenuPalette.Text);
+        status.AddThemeFontSizeOverride("font_size", 16);
+        status.AddThemeColorOverride("font_color", MenuPalette.Alpha(MenuPalette.Ash, 0.72f));
 
-        var summary = Text(info.Summary, 15, MenuPalette.Alpha(MenuPalette.Platinum, 0.86f));
-        summary.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        body.AddChild(summary);
-
-        body.AddChild(VSpace(24));
-        body.AddChild(Text("尚待开放", 16, MenuPalette.Alpha(MenuPalette.Ash, 0.72f)));
-        body.AddChild(VSpace(24));
-
-        _back = new TechMenuItem
-        {
-            Index = "ESC",
-            Title = "返回模式选择",
-            Subtitle = "MODE SELECT",
-        };
-        _back.Pressed += RequestBack;
-        body.AddChild(_back);
+        _back.Index = "ESC";
+        _back.Title = "返回模式选择";
+        _back.Subtitle = "MODE SELECT";
+        _back.QueueRedraw();
     }
 
-    #region 行为
-
-    private void RequestBack()
+    protected override void InitEvent()
     {
-        BackRequested?.Invoke();
+        OnClicks(_back, RequestBack);
     }
 
-    #endregion
+    protected override void OnOpen()
+    {
+        ModeBriefPayload payload = GetTypedPayload<ModeBriefPayload>();
+        GameModeInfo info = Facade<MenuController>().GetMode(payload.Mode);
+        _title.Text = info.Title;
+        _summary.Text = info.Summary;
+        PlayIntro();
+    }
 
-    #region 动效
+    protected override void UpdateView()
+    {
+    }
+
+    private void RequestBack() => BackRequested?.Invoke();
 
     private void PlayIntro()
     {
@@ -98,25 +91,4 @@ public partial class ModeTeaserScreen : Control
             if (IsInstanceValid(this)) _back.GrabFocus();
         }));
     }
-
-    #endregion
-
-    #region 小工具
-
-    private static Label Text(string text, int size, Color color)
-    {
-        var label = new Label { Text = text, MouseFilter = MouseFilterEnum.Ignore };
-        label.AddThemeFontOverride("font", MenuPalette.Text);
-        label.AddThemeFontSizeOverride("font_size", size);
-        label.AddThemeColorOverride("font_color", color);
-        return label;
-    }
-
-    private static Control VSpace(float height) => new Control
-    {
-        CustomMinimumSize = new Vector2(0, height),
-        MouseFilter = MouseFilterEnum.Ignore,
-    };
-
-    #endregion
 }

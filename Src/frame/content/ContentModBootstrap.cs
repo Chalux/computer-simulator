@@ -4,6 +4,8 @@ namespace KemoCard.Frame.Content;
 
 public static class ContentModBootstrap
 {
+    private const string MarkerFileName = ".content-mod-origin";
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -18,39 +20,63 @@ public static class ContentModBootstrap
     /// 由调用方注入（<c>ModStartupContext.ForceContentModRefresh</c>），本类<b>不</b>直接读 Godot 的构建标记，
     /// 以便逻辑层测试不依赖引擎。
     /// </param>
+    /// <param name="sourceFileSystem">
+    /// 随包来源文件系统。导出包里的 <c>res://mods</c> 位于 PCK，必须用
+    /// <c>GodotContentModFileSystem</c>；普通目录可省略。
+    /// </param>
+    /// <param name="preserveExisting">
+    /// 目标目录存在但不是本工具写入的（没有来源标记）时跳过。默认开启，
+    /// 避免启动时把第三方安装 / 玩家手改的 Mod 覆盖掉。
+    /// </param>
     public static void EnsureDefaultModsCopied(
         string modRootDirectory,
         string bundledModsSourceDirectory,
-        bool forceRefresh = false)
+        bool forceRefresh = false,
+        IContentModFileSystem? sourceFileSystem = null,
+        bool preserveExisting = true)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(modRootDirectory);
         ArgumentException.ThrowIfNullOrWhiteSpace(bundledModsSourceDirectory);
 
-        if (!Directory.Exists(bundledModsSourceDirectory))
+        var fileSystem = sourceFileSystem ?? SystemContentModFileSystem.Instance;
+        if (!fileSystem.DirectoryExists(bundledModsSourceDirectory))
         {
             return;
         }
 
         Directory.CreateDirectory(modRootDirectory);
-        foreach (var sourceDir in Directory.EnumerateDirectories(bundledModsSourceDirectory))
+        foreach (var sourceDir in fileSystem
+                     .EnumerateDirectories(bundledModsSourceDirectory)
+                     .OrderBy(static p => p, StringComparer.Ordinal))
         {
-            var folderName = Path.GetFileName(sourceDir);
+            var folderName = ContentModPath.GetFileName(sourceDir);
             var destDir = Path.Combine(modRootDirectory, folderName);
-            EnsureModCopied(sourceDir, destDir, forceRefresh);
+            EnsureModCopied(fileSystem, sourceDir, destDir, forceRefresh, preserveExisting);
         }
     }
 
-    private static void EnsureModCopied(string sourceDir, string destDir, bool forceRefresh)
+    private static void EnsureModCopied(
+        IContentModFileSystem fileSystem,
+        string sourceDir,
+        string destDir,
+        bool forceRefresh,
+        bool preserveExisting)
     {
-        if (!TryReadManifestVersion(sourceDir, out var bundledVersion))
+        if (!TryReadManifestVersion(fileSystem, sourceDir, out var bundledModId, out var bundledVersion))
         {
             return;
         }
 
         if (Directory.Exists(destDir))
         {
+            if (preserveExisting && !HasOriginMarker(destDir, bundledModId))
+            {
+                // 目标不是上一次由本工具安装的：视作第三方安装，绝不覆盖。
+                return;
+            }
+
             if (!forceRefresh &&
-                TryReadManifestVersion(destDir, out var installedVersion) &&
+                TryReadManifestVersion(SystemContentModFileSystem.Instance, destDir, out _, out var installedVersion) &&
                 string.Equals(installedVersion, bundledVersion, StringComparison.Ordinal))
             {
                 return;
@@ -64,7 +90,8 @@ public static class ContentModBootstrap
 
         try
         {
-            CopyDirectoryRecursive(sourceDir, stagingDir);
+            CopyDirectoryRecursive(fileSystem, sourceDir, stagingDir);
+            File.WriteAllText(Path.Combine(stagingDir, MarkerFileName), $"{bundledModId}\n{bundledVersion}\n");
             if (Directory.Exists(destDir))
             {
                 DeleteDirectoryIfExists(destDir);
@@ -79,24 +106,50 @@ public static class ContentModBootstrap
         }
     }
 
-    private static bool TryReadManifestVersion(string modDir, out string version)
+    private static bool HasOriginMarker(string directory, string modId)
     {
-        version = string.Empty;
-        var manifestPath = Path.Combine(modDir, "mod.json");
-        if (!File.Exists(manifestPath))
+        var markerPath = Path.Combine(directory, MarkerFileName);
+        if (!File.Exists(markerPath))
         {
             return false;
         }
 
         try
         {
-            var json = File.ReadAllText(manifestPath);
+            var firstLine = File.ReadLines(markerPath).FirstOrDefault();
+            return string.Equals(firstLine, modId, StringComparison.Ordinal);
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+    }
+
+    private static bool TryReadManifestVersion(
+        IContentModFileSystem fileSystem,
+        string modDir,
+        out string modId,
+        out string version)
+    {
+        modId = string.Empty;
+        version = string.Empty;
+        var manifestPath = ContentModPath.Combine(modDir, "mod.json");
+        if (!fileSystem.FileExists(manifestPath))
+        {
+            return false;
+        }
+
+        try
+        {
+            var json = fileSystem.ReadAllText(manifestPath);
             var manifest = JsonSerializer.Deserialize<ContentModManifestDto>(json, JsonOptions);
-            if (manifest is null || string.IsNullOrWhiteSpace(manifest.Version))
+            if (manifest is null || string.IsNullOrWhiteSpace(manifest.Version) ||
+                string.IsNullOrWhiteSpace(manifest.ModId))
             {
                 return false;
             }
 
+            modId = manifest.ModId;
             version = manifest.Version;
             return true;
         }
@@ -104,21 +157,28 @@ public static class ContentModBootstrap
         {
             return false;
         }
+        catch (IOException)
+        {
+            return false;
+        }
     }
 
-    private static void CopyDirectoryRecursive(string sourceDir, string destDir)
+    private static void CopyDirectoryRecursive(
+        IContentModFileSystem fileSystem,
+        string sourceDir,
+        string destDir)
     {
         Directory.CreateDirectory(destDir);
-        foreach (var file in Directory.EnumerateFiles(sourceDir))
+        foreach (var file in fileSystem.EnumerateFiles(sourceDir))
         {
-            var destFile = Path.Combine(destDir, Path.GetFileName(file));
-            File.Copy(file, destFile, overwrite: true);
+            var destFile = Path.Combine(destDir, ContentModPath.GetFileName(file));
+            File.WriteAllBytes(destFile, fileSystem.ReadAllBytes(file));
         }
 
-        foreach (var subDir in Directory.EnumerateDirectories(sourceDir))
+        foreach (var subDir in fileSystem.EnumerateDirectories(sourceDir))
         {
-            var destSub = Path.Combine(destDir, Path.GetFileName(subDir));
-            CopyDirectoryRecursive(subDir, destSub);
+            var destSub = Path.Combine(destDir, ContentModPath.GetFileName(subDir));
+            CopyDirectoryRecursive(fileSystem, subDir, destSub);
         }
     }
 

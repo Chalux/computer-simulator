@@ -35,7 +35,7 @@ public sealed class ModScriptCatalog
     {
         if (_byModId.TryGetValue(modId, out var entry))
         {
-            contentRootPath = Path.Combine(entry.FolderPath, entry.ContentRoot);
+            contentRootPath = ContentModPath.Combine(entry.FolderPath, entry.ContentRoot);
             return true;
         }
 

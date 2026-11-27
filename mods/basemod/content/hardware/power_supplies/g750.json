@@ -1,0 +1,14 @@
+{
+  "order": 0,
+  "name": "稳流 G750",
+  "continuous": 750,
+  "pulse": 900,
+  "recommended": 780,
+  "length": 160,
+  "width": 150,
+  "height": 86,
+  "price": 529,
+  "cable": "全模组",
+  "noiseDb": 26,
+  "asset": "assets/models/power_supplies/g750.glb"
+}

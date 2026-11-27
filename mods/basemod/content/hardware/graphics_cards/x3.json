@@ -1,0 +1,15 @@
+{
+  "order": 0,
+  "name": "刀法精工 X3",
+  "price": 3799,
+  "dimensions": [335, 56, 118],
+  "fanCount": 3,
+  "performance": 149,
+  "resistance": 0.19,
+  "throttle": 86,
+  "maxFanDb": 44,
+  "color": "黑",
+  "lighting": "ARGB",
+  "testWatts": [40, 320, 365, 448],
+  "asset": "assets/models/graphics_cards/x3.glb"
+}

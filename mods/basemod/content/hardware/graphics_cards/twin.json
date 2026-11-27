@@ -1,0 +1,15 @@
+{
+  "order": 1,
+  "name": "刀法精工 Twin",
+  "price": 2399,
+  "dimensions": [285, 46, 110],
+  "fanCount": 2,
+  "performance": 104,
+  "resistance": 0.22,
+  "throttle": 86,
+  "maxFanDb": 40,
+  "color": "黑",
+  "lighting": "ARGB",
+  "testWatts": [32, 215, 235, 279],
+  "asset": "assets/models/graphics_cards/twin.glb"
+}

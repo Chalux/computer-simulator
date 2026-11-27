@@ -1,145 +1,94 @@
 using Godot;
+using KemoCard.Frame.UI.Base;
 
 namespace ComputerSimulator.Modules.Menu;
 
 /// <summary>
-/// 主菜单：极简排版。左侧轻字重标题 + 纯文字菜单，右侧一台静默线框机箱，
-/// 底部一条分割线收口。除 Signal 外不使用任何彩色装饰。
+/// 主菜单页面：布局与持久控件来自 <c>main_menu.tscn</c>，本类只负责主题、
+/// 自绘装饰、动效与把菜单意图转发给组合根。
 /// </summary>
-public partial class MainMenuScreen : Control
+public partial class MainMenuScreen : BaseWin
 {
-    /// <summary>“开始装配”不再直接进工作台，先交给组合根打开模式选择。</summary>
     public event Action? ModesRequested;
+    public event Action? SettingsRequested;
+    public event Action? CreditsRequested;
 
     private readonly List<TechMenuItem> _items = [];
-    private readonly VBoxContainer _menu = new();
-
-    private MenuOverlay _overlay = null!;
+    private MenuController _controller = null!;
+    private VBoxContainer _menu = null!;
     private TechTitle _title = null!;
     private TechLine _rule = null!;
     private Control _left = null!;
     private Control _footer = null!;
     private TechShowcase _showcase = null!;
 
-    public override void _Ready()
+    public override string UIId => UiRoutes.MainMenu;
+    public override string UIDir => UiRoutes.MenuDir;
+
+    protected override void OnCreate()
     {
         SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         Theme = MenuPalette.CreateTheme();
         MouseFilter = MouseFilterEnum.Stop;
 
-        MenuSettings.Load();
-        MenuSettings.Apply();
+        _controller = Facade<MenuController>();
+        _left = GetNode<Control>("%Left");
+        _footer = GetNode<Control>("%Footer");
+        _showcase = GetNode<TechShowcase>("%Showcase");
+        _menu = GetNode<VBoxContainer>("%Menu");
 
-        Build();
+        BuildHero();
+        BuildItems();
+        BuildFooter();
+
+        GetNode<Label>("%Subtitle").AddThemeFontOverride("font", MenuPalette.Text);
+        GetNode<Label>("%Subtitle").AddThemeFontSizeOverride("font_size", 16);
+        GetNode<Label>("%Subtitle").AddThemeColorOverride("font_color",
+            MenuPalette.Alpha(MenuPalette.Ash, 0.78f));
+    }
+
+    protected override void InitEvent()
+    {
+        OnClicks(_items[0], RequestModes);
+        OnClicks(_items[1], OpenSettings);
+        OnClicks(_items[2], OpenCredits);
+        OnClicks(_items[3], _controller.RequestQuit);
+    }
+
+    protected override void OnOpen()
+    {
         PlayIntro();
     }
 
-    #region 布局
-
-    private void Build()
+    protected override void UpdateView()
     {
-        var backdrop = new TechBackdrop();
-        AddChild(backdrop);
-        backdrop.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-
-        var margin = new MarginContainer { MouseFilter = MouseFilterEnum.Ignore };
-        margin.AddThemeConstantOverride("margin_left", 72);
-        margin.AddThemeConstantOverride("margin_right", 72);
-        margin.AddThemeConstantOverride("margin_top", 60);
-        margin.AddThemeConstantOverride("margin_bottom", 34);
-        AddChild(margin);
-        margin.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-
-        var page = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
-        page.AddThemeConstantOverride("separation", 0);
-        margin.AddChild(page);
-
-        var content = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
-        content.AddThemeConstantOverride("separation", 24);
-        page.AddChild(content);
-
-        _left = BuildLeftColumn();
-        content.AddChild(_left);
-
-        // 版心分隔：1px 竖线把排版区与线框区分开，空出两侧各 24px。
-        content.AddChild(new ColorRect
-        {
-            Color = MenuPalette.Alpha(MenuPalette.Steel, 0.45f),
-            CustomMinimumSize = new Vector2(1, 0),
-            SizeFlagsVertical = SizeFlags.ExpandFill,
-            MouseFilter = MouseFilterEnum.Ignore,
-        });
-
-        _showcase = new TechShowcase
-        {
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            SizeFlagsVertical = SizeFlags.ExpandFill,
-        };
-        content.AddChild(_showcase);
-
-        _footer = BuildFooter();
-        page.AddChild(_footer);
-
-        _overlay = new MenuOverlay();
-        AddChild(_overlay);
-        _overlay.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        _overlay.Closed += () =>
-        {
-            MenuSettings.Save();
-            if (_items.Count > 0) _items[0].GrabFocus();
-        };
     }
 
-    private Control BuildLeftColumn()
+    protected override void OnLayerVisibleUpdate()
     {
-        var column = new VBoxContainer
-        {
-            CustomMinimumSize = new Vector2(540, 0),
-            SizeFlagsVertical = SizeFlags.ExpandFill,
-            SizeFlagsHorizontal = SizeFlags.Fill,
-        };
-        column.AddThemeConstantOverride("separation", 0);
-
-        column.AddChild(BuildHero());
-        column.AddChild(VSpace(44));
-
-        column.AddChild(new TechLine
-        {
-            CustomMinimumSize = new Vector2(0, 1),
-            Strength = 0.75f,
-        });
-
-        _menu.AddThemeConstantOverride("separation", 0);
-        column.AddChild(_menu);
-
-        AddItem("01", "开始装配", "START BUILD", RequestModes);
-        AddItem("02", "系统设置", "SYSTEM CONFIG", OpenSettings);
-        AddItem("03", "制作名单", "CREDITS", OpenCredits);
-        AddItem("04", "退出游戏", "EXIT", () => GetTree().Quit());
-
-        column.AddChild(new Control { SizeFlagsVertical = SizeFlags.ExpandFill });
-        return column;
+        if (!Visible || _items.Count == 0) return;
+        if (GetViewport().GuiGetFocusOwner() != null) return;
+        _items[0].GrabFocus();
     }
 
-    private Control BuildHero()
+    /// <summary>弹层关闭后恢复菜单焦点；由组合根在 Dlg 关闭事件里调用。</summary>
+    internal void FocusInitial()
     {
-        var hero = new VBoxContainer();
-        hero.AddThemeConstantOverride("separation", 0);
+        if (!IsInstanceValid(this) || !Visible || _items.Count == 0) return;
+        _items[0].GrabFocus();
+    }
 
-        var kicker = new HBoxContainer { CustomMinimumSize = new Vector2(0, 14) };
-        kicker.AddThemeConstantOverride("separation", 12);
-        kicker.AddChild(new ColorRect
+    private void BuildHero()
+    {
+        var kicker = new TrackedText
         {
-            Color = MenuPalette.Signal,
-            CustomMinimumSize = new Vector2(2, 11),
+            Content = "HARDWARE ASSEMBLY SIMULATOR",
+            FontSize = 9,
+            Tint = MenuPalette.Alpha(MenuPalette.Ash, 0.78f),
+            Tracking = 3.0f,
             SizeFlagsVertical = SizeFlags.ShrinkCenter,
-            MouseFilter = MouseFilterEnum.Ignore,
-        });
-        kicker.AddChild(Tracked("HARDWARE ASSEMBLY SIMULATOR", 9, MenuPalette.Alpha(MenuPalette.Ash, 0.78f), 3.0f,
-            vertical: SizeFlags.ShrinkCenter));
-        hero.AddChild(kicker);
-
-        hero.AddChild(VSpace(16));
+        };
+        GetNode<HBoxContainer>("%KickerHost").AddChild(kicker);
 
         _title = new TechTitle
         {
@@ -150,9 +99,7 @@ public partial class MainMenuScreen : Control
             Prefix = MenuPalette.Ash,
             Tint = MenuPalette.Platinum,
         };
-        hero.AddChild(_title);
-
-        hero.AddChild(VSpace(10));
+        GetNode<VBoxContainer>("%TitleHost").AddChild(_title);
 
         _rule = new TechLine
         {
@@ -163,190 +110,65 @@ public partial class MainMenuScreen : Control
             SizeFlagsHorizontal = SizeFlags.Fill,
             PivotOffset = Vector2.Zero,
         };
-        hero.AddChild(_rule);
+        GetNode<VBoxContainer>("%HeroRuleHost").AddChild(_rule);
 
-        hero.AddChild(VSpace(14));
-
-        hero.AddChild(Text("装 机 模 拟 器", 16, MenuPalette.Alpha(MenuPalette.Ash, 0.78f)));
-
-        return hero;
+        GetNode<VBoxContainer>("%MenuRuleHost").AddChild(new TechLine
+        {
+            CustomMinimumSize = new Vector2(0, 1),
+            Strength = 0.75f,
+        });
     }
 
-    private Control BuildFooter()
+    private void BuildItems()
     {
-        var footer = new VBoxContainer();
-        footer.AddThemeConstantOverride("separation", 12);
+        AddItem(GetNode<TechMenuItem>("%StartItem"), "01", "开始装配", "START BUILD");
+        AddItem(GetNode<TechMenuItem>("%SettingsItem"), "02", "系统设置", "SYSTEM CONFIG");
+        AddItem(GetNode<TechMenuItem>("%CreditsItem"), "03", "制作名单", "CREDITS");
+        AddItem(GetNode<TechMenuItem>("%QuitItem"), "04", "退出游戏", "EXIT");
+        _menu.AddThemeConstantOverride("separation", 0);
+    }
 
-        footer.AddChild(new TechLine
+    private void AddItem(TechMenuItem item, string index, string title, string subtitle)
+    {
+        item.Index = index;
+        item.Title = title;
+        item.Subtitle = subtitle;
+        item.QueueRedraw();
+        _items.Add(item);
+    }
+
+    private void BuildFooter()
+    {
+        GetNode<VBoxContainer>("%FooterRuleHost").AddChild(new TechLine
         {
             CustomMinimumSize = new Vector2(0, 1),
             Strength = 0.55f,
         });
 
-        var row = new HBoxContainer { CustomMinimumSize = new Vector2(0, 16) };
-        row.AddThemeConstantOverride("separation", 10);
-        row.AddChild(new StatusDot
+        var row = GetNode<HBoxContainer>("%FooterRow");
+        var dot = new StatusDot
         {
             Radius = 2f,
             SizeFlagsVertical = SizeFlags.ShrinkCenter,
-        });
-        row.AddChild(Tracked("BUILD 0.1.0", 9, MenuPalette.Alpha(MenuPalette.Ash, 0.58f), 1.4f,
-            vertical: SizeFlags.ShrinkCenter));
-        row.AddChild(Expand());
-        row.AddChild(Tracked("© 2026 PC ARCHITECT", 9, MenuPalette.Alpha(MenuPalette.Ash, 0.48f), 1.4f,
-            vertical: SizeFlags.ShrinkCenter));
-        footer.AddChild(row);
-
-        return footer;
-    }
-
-    private void AddItem(string index, string title, string subtitle, Action action)
-    {
-        var item = new TechMenuItem
-        {
-            Index = index,
-            Title = title,
-            Subtitle = subtitle,
         };
-        _menu.AddChild(item);
-        item.Pressed += action;
-        _items.Add(item);
+        row.AddChild(dot);
+        row.MoveChild(dot, 0);
+
+        var build = Tracked("BUILD 0.1.0", 9, MenuPalette.Alpha(MenuPalette.Ash, 0.58f), 1.4f,
+            vertical: SizeFlags.ShrinkCenter);
+        row.AddChild(build);
+        row.MoveChild(build, 1);
+
+        var copyright = Tracked("© 2026 PC ARCHITECT", 9, MenuPalette.Alpha(MenuPalette.Ash, 0.48f), 1.4f,
+            vertical: SizeFlags.ShrinkCenter);
+        row.AddChild(copyright);
     }
 
-    #endregion
+    private void RequestModes() => ModesRequested?.Invoke();
 
-    #region 行为
+    private void OpenSettings() => SettingsRequested?.Invoke();
 
-    private void RequestModes()
-    {
-        ModesRequested?.Invoke();
-    }
-
-    private void OpenSettings()
-    {
-        _overlay.Open("SYSTEM", "系统设置", body =>
-        {
-            body.AddChild(SliderRow("主音量", "MASTER VOLUME", MenuSettings.MasterVolume * 100f,
-                value => MenuSettings.SetMasterVolume(value / 100f)));
-            body.AddChild(ToggleRow("全屏显示", "FULLSCREEN", MenuSettings.Fullscreen, MenuSettings.SetFullscreen));
-            body.AddChild(ToggleRow("垂直同步", "V-SYNC", MenuSettings.Vsync, MenuSettings.SetVsync));
-            body.AddChild(ToggleRow("帧率显示", "FRAME COUNTER", MenuSettings.ShowFps, MenuSettings.SetShowFps));
-
-            body.AddChild(VSpace(12));
-            body.AddChild(Text("配置写入 user://menu.cfg，下次启动自动恢复。", 10, MenuPalette.Alpha(MenuPalette.Ash, 0.40f)));
-        });
-    }
-
-    private void OpenCredits()
-    {
-        _overlay.Open("CREDITS", "制作名单", body =>
-        {
-            var intro = Text("聚焦空间干涉、协议逻辑与性能平衡的硬件装配模拟。", 13,
-                MenuPalette.Alpha(MenuPalette.Platinum, 0.88f));
-            intro.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-            body.AddChild(intro);
-
-            body.AddChild(VSpace(18));
-            body.AddChild(new TechLine { CustomMinimumSize = new Vector2(0, 1), Strength = 0.55f });
-            body.AddChild(VSpace(14));
-
-            body.AddChild(KeyValue("ENGINE", "Godot 4.7 · C#"));
-            body.AddChild(KeyValue("RULES", "TypeScript 规则引擎"));
-            body.AddChild(KeyValue("DATA", "JSON 硬件参数库"));
-            body.AddChild(KeyValue("BUILD", "0.1.0 · INTERNAL PREVIEW"));
-
-            body.AddChild(VSpace(14));
-            body.AddChild(new TechLine { CustomMinimumSize = new Vector2(0, 1), Strength = 0.55f });
-            body.AddChild(VSpace(12));
-            body.AddChild(Tracked("© 2026 PC ARCHITECT", 9, MenuPalette.Alpha(MenuPalette.Ash, 0.42f), 1.4f));
-        });
-    }
-
-    private static Control SliderRow(string title, string tag, float value, Action<float> changed)
-    {
-        var row = new HBoxContainer { CustomMinimumSize = new Vector2(0, 52) };
-        row.AddThemeConstantOverride("separation", 16);
-        row.AddChild(RowLabel(title, tag));
-        row.AddChild(Expand());
-
-        var slider = new HSlider
-        {
-            MinValue = 0,
-            MaxValue = 100,
-            Step = 1,
-            Value = value,
-            CustomMinimumSize = new Vector2(170, 16),
-            SizeFlagsVertical = SizeFlags.ShrinkCenter,
-            FocusMode = FocusModeEnum.All,
-        };
-
-        StyleBoxFlat track = MenuPalette.Box(MenuPalette.Alpha(MenuPalette.Steel, 0.9f), Colors.Transparent, 0);
-        track.ContentMarginTop = 1;
-        track.ContentMarginBottom = 1;
-        StyleBoxFlat fill = MenuPalette.Box(MenuPalette.Alpha(MenuPalette.Signal, 0.75f), Colors.Transparent, 0);
-        fill.ContentMarginTop = 1;
-        fill.ContentMarginBottom = 1;
-        StyleBoxFlat fillHot = MenuPalette.Box(MenuPalette.Signal, Colors.Transparent, 0);
-        fillHot.ContentMarginTop = 1;
-        fillHot.ContentMarginBottom = 1;
-
-        slider.AddThemeStyleboxOverride("slider", track);
-        slider.AddThemeStyleboxOverride("grabber_area", fill);
-        slider.AddThemeStyleboxOverride("grabber_area_highlight", fillHot);
-        slider.AddThemeIconOverride("grabber", MenuPalette.SliderHandle);
-
-        var readout = Tracked($"{value:0}%", 11, MenuPalette.Alpha(MenuPalette.Platinum, 0.85f), 1.2f,
-            align: HorizontalAlignment.Right);
-        readout.MinWidth = 46f;
-        readout.SizeFlagsVertical = SizeFlags.ShrinkCenter;
-
-        slider.ValueChanged += v =>
-        {
-            readout.SetText($"{v:0}%");
-            changed((float)v);
-        };
-
-        row.AddChild(slider);
-        row.AddChild(readout);
-        return row;
-    }
-
-    private static Control ToggleRow(string title, string tag, bool value, Action<bool> changed)
-    {
-        var row = new HBoxContainer { CustomMinimumSize = new Vector2(0, 48) };
-        row.AddThemeConstantOverride("separation", 16);
-        row.AddChild(RowLabel(title, tag));
-        row.AddChild(Expand());
-
-        var toggle = new TechToggle { On = value, SizeFlagsVertical = SizeFlags.ShrinkCenter };
-        toggle.SwitchToggled += on => changed(on);
-        row.AddChild(toggle);
-        return row;
-    }
-
-    private static Control RowLabel(string title, string tag)
-    {
-        var box = new VBoxContainer { SizeFlagsVertical = SizeFlags.ShrinkCenter };
-        box.AddThemeConstantOverride("separation", 2);
-        box.AddChild(Text(title, 14, MenuPalette.Alpha(MenuPalette.Platinum, 0.92f)));
-        box.AddChild(Tracked(tag, 9, MenuPalette.Alpha(MenuPalette.Ash, 0.45f), 1.6f));
-        return box;
-    }
-
-    private static Control KeyValue(string key, string value)
-    {
-        var row = new HBoxContainer { CustomMinimumSize = new Vector2(0, 22) };
-        row.AddThemeConstantOverride("separation", 18);
-        var label = Tracked(key, 9, MenuPalette.Alpha(MenuPalette.Ash, 0.50f), 1.4f);
-        label.MinWidth = 92f;
-        row.AddChild(label);
-        row.AddChild(Text(value, 12, MenuPalette.Alpha(MenuPalette.Platinum, 0.85f)));
-        return row;
-    }
-
-    #endregion
-
-    #region 动效
+    private void OpenCredits() => CreditsRequested?.Invoke();
 
     private void PlayIntro()
     {
@@ -388,19 +210,6 @@ public partial class MainMenuScreen : Control
         }));
     }
 
-    #endregion
-
-    #region 小工具
-
-    private static Label Text(string text, int size, Color color)
-    {
-        var label = new Label { Text = text, MouseFilter = MouseFilterEnum.Ignore };
-        label.AddThemeFontOverride("font", MenuPalette.Text);
-        label.AddThemeFontSizeOverride("font_size", size);
-        label.AddThemeColorOverride("font_color", color);
-        return label;
-    }
-
     private static TrackedText Tracked(string text, int size, Color color, float tracking,
         Control.SizeFlags vertical = Control.SizeFlags.Fill, HorizontalAlignment align = HorizontalAlignment.Left)
     {
@@ -414,18 +223,4 @@ public partial class MainMenuScreen : Control
             SizeFlagsVertical = vertical,
         };
     }
-
-    private static Control Expand() => new Control
-    {
-        SizeFlagsHorizontal = SizeFlags.ExpandFill,
-        MouseFilter = MouseFilterEnum.Ignore,
-    };
-
-    private static Control VSpace(float height) => new Control
-    {
-        CustomMinimumSize = new Vector2(0, height),
-        MouseFilter = MouseFilterEnum.Ignore,
-    };
-
-    #endregion
 }

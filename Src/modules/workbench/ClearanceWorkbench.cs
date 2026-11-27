@@ -1,280 +1,261 @@
+using System.Reflection;
 using ComputerSimulator.Modules.Benchmark;
+using ComputerSimulator.Modules.Commission;
 using ComputerSimulator.Modules.Hardware;
 using ComputerSimulator.Modules.Inspection;
-using ComputerSimulator.Modules.Simulation;
 using Godot;
+using KemoCard.Frame.Mvc;
+using KemoCard.Frame.UI;
+using KemoCard.Frame.UI.Base;
 
 namespace ComputerSimulator.Modules.Workbench;
 
-public partial class ClearanceWorkbench : PanelContainer
+/// <summary>
+/// 工作台页面：装配与委托共用一份场景与一套控件，控制器由会话门面提供。
+/// 布局、持久控件与列表容器来自 <c>workbench.tscn</c>；动态选项与插槽按硬件目录生成。
+/// </summary>
+public partial class ClearanceWorkbench : BaseWin
 {
-    /// <summary>请求返回模式选择（由组合根接管场景切换）。</summary>
+    /// <summary>请求返回上一层（由组合根接管路由）。</summary>
     public event Action? BackRequested;
 
-    /// <summary>首箱模式：固定前置 360、4K、均衡风道、内存套件 A2/B2，仅开放机箱/显卡/电源选择。</summary>
-    public bool CrateMode { get; init; }
+    internal CommissionController? CommissionController { get; private set; }
+    public bool CrateMode => _facade.Assembly?.CrateMode == true;
+    public bool CommissionMode => _facade.CommissionMode;
 
-    private static readonly int[] CrateSlots = [1, 3];
-    private ClearanceRules? _rules;
-    private readonly BenchViewport _viewport = new()
-    {
-        SizeFlagsVertical = SizeFlags.ExpandFill,
-        CustomMinimumSize = new Vector2(0, 180),
-    };
+    private BenchCatalog Catalog => _facade.Commission?.Catalog ?? _facade.Assembly!.Catalog;
 
-    private readonly SectionDrawing _section = new()
-    {
-        SizeFlagsVertical = SizeFlags.ExpandFill,
-        CustomMinimumSize = new Vector2(0, 100),
-    };
+    private WorkbenchUiFacade _facade = null!;
+    private BenchmarkReportView _report = null!;
 
-    private readonly OptionButton _case = new(), _memory = new();
-    private readonly OptionButton _scenario = new(), _gpu = new();
-    private readonly VBoxContainer _air = new(), _water = new();
-    private readonly Label _goal = new(), _hardwareName = new();
-    private readonly Label _crateInventory = new() { AutowrapMode = TextServer.AutowrapMode.WordSmart };
-    private readonly Label _crateResult = new() { AutowrapMode = TextServer.AutowrapMode.WordSmart };
+    private BenchViewport _viewport = null!;
+    private SectionDrawing _section = null!;
+    private OptionButton _case = null!, _memory = null!, _scenario = null!, _gpu = null!;
+    private VBoxContainer _air = null!, _water = null!;
+    private Label _goal = null!, _hardwareName = null!;
+    private Label _crateInventory = null!, _crateResult = null!;
     private readonly List<CheckBox> _slots = [];
-    private readonly HBoxContainer _slotsRow = new();
-    private readonly HSlider _offset = new() { Step = 1, SizeFlagsHorizontal = SizeFlags.ExpandFill };
-    private readonly Label _offsetText = new(), _status = new(), _metrics = new(), _messages = new();
+    private HBoxContainer _slotsRow = null!;
+    private HSlider _offset = null!;
+    private Label _offsetText = null!, _status = null!, _metrics = null!, _messages = null!;
     private VBoxContainer _scenarioField = null!, _memoryField = null!, _slotsField = null!, _conditionsField = null!;
-    private readonly VBoxContainer _power = new();
-    private readonly HBoxContainer _conditions = new();
-    private readonly OptionButton _psu = new(), _workload = new(), _airflow = new();
-    private readonly TabContainer _views = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
-    private readonly BenchmarkReportView _report = new() { Name = "负载报告" };
-    private readonly Button _runLoad = new() { Text = "运行整机负载测试" };
-    private readonly Label _powerResult = new() { AutowrapMode = TextServer.AutowrapMode.WordSmart };
-    private readonly Button _submit = new() { Text = "提交首箱评分", TooltipText = "通过一次当前配置的测试后可提交" };
-    private readonly Button _replay = new() { Text = "再次挑战", TooltipText = "保留本次访问最佳并回到初始选择" };
-    private readonly Button _reset = new() { Text = "还原初始配置" };
-    private PanelContainer _statusChip = null!;
-    private PanelContainer _loadPanel = null!;
+    private VBoxContainer _power = null!;
+    private HBoxContainer _conditions = null!;
+    private OptionButton _psu = null!, _workload = null!, _airflow = null!;
+    private TabContainer _views = null!;
+    private Button _runLoad = null!;
+    private Label _powerResult = null!;
+    private Button _submit = null!, _replay = null!, _reset = null!;
+    private PanelContainer _statusChip = null!, _loadPanel = null!;
     private HBoxContainer _sectionCell = null!;
     private GridContainer _stripGrid = null!;
-    private BenchmarkReport? _lastReport;
-    private float? _bestScore;
-    private string _bestGrade = "";
-    private bool _submitted;
-    private bool _hasTestResult;
-    private bool _resetting;
 
-    public override void _Ready()
+    private Button _menuButton = null!, _powerRunLoad = null!, _commissionRunLoad = null!;
+    private CheckBox _sidePanel = null!, _rgb = null!;
+    private readonly Button[] _viewButtons = new Button[5];
+
+    public override string UIId => UiRoutes.Workbench;
+    public override string UIDir => UiRoutes.WorkbenchDir;
+
+    protected override void OnCreate()
     {
         Theme = WorkbenchStyle.CreateTheme();
-        AddThemeStyleboxOverride("panel", WorkbenchStyle.Box(
-            WorkbenchStyle.Canvas, WorkbenchStyle.Canvas, 14, 12, 0, 0));
-        _rules = new ClearanceRules();
-        var catalog = _rules.Catalog;
-        if (CrateMode)
+        SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        MouseFilter = MouseFilterEnum.Stop;
+
+        _facade = Facade<WorkbenchUiFacade>();
+        SetControllersFromFacade();
+
+        CacheNodes();
+        var viewGroup = new ButtonGroup();
+        foreach (Button button in _viewButtons) button.ButtonGroup = viewGroup;
+        ApplyWorkbenchStyle();
+        PopulateCatalog();
+        ConfigureModeVisibility();
+        if (CommissionMode) InitializeCommissionView();
+    }
+
+    protected override void InitEvent()
+    {
+        SetControllersFromFacade();
+
+        Binder.OnPressed(_menuButton, () => BackRequested?.Invoke());
+        Binder.OnPressed(_powerRunLoad, RunLoad);
+        Binder.OnPressed(_commissionRunLoad, RunLoad);
+        Binder.OnPressed(_submit, SubmitCrate);
+        Binder.OnPressed(_replay, ReplayCrate);
+        Binder.OnPressed(_reset, Reset);
+
+        Binder.OnItemSelected(_scenario, _ => Reset());
+        Binder.OnItemSelected(_case, _ => Refresh());
+        Binder.OnItemSelected(_gpu, _ => Refresh());
+        Binder.OnItemSelected(_memory, _ => Refresh());
+        Binder.OnItemSelected(_workload, _ => Refresh());
+        Binder.OnItemSelected(_airflow, _ => Refresh());
+        Binder.OnItemSelected(_psu, _ => Refresh());
+        Binder.OnValueChanged(_offset, _ => Refresh());
+        Binder.OnResized(_views, UpdateSectionVisibility);
+
+        Binder.OnSignal<BaseButton.ToggledEventHandler>(
+            _viewport.ShowPanel,
+            handler => _sidePanel.Toggled += handler,
+            handler => _sidePanel.Toggled -= handler);
+        _viewport.ShowPanel(_sidePanel.ButtonPressed);
+        _rgb.SetPressedNoSignal(true);
+        _viewport.SetRgb(_rgb.ButtonPressed);
+        Binder.OnSignal<BaseButton.ToggledEventHandler>(
+            _viewport.SetRgb,
+            handler => _rgb.Toggled += handler,
+            handler => _rgb.Toggled -= handler);
+
+        for (int i = 0; i < _viewButtons.Length; i++)
         {
-            _crateInventory.Text =
-                $"首箱清单（机箱/显卡/电源各选 1 件）：机箱 {string.Join(" / ", catalog.Cases.Select(item => item.Name))}；" +
-                $"显卡 {string.Join(" / ", catalog.Graphics.Select(item => item.Name))}；" +
-                $"电源 {string.Join(" / ", catalog.PowerSupplies.Select(item => item.Name))}。\n" +
-                $"固定件：{catalog.Liquid.Name} 前置 360、{catalog.Ram[0].Name} ×2（A2 + B2）、" +
-                $"{catalog.Benchmark.Workloads[1].Name}、{catalog.Benchmark.Airflows[0].Name}。";
+            int view = i;
+            Binder.OnPressed(_viewButtons[i], () => _viewport.SetView(view));
         }
 
-        var page = new VBoxContainer { Name = "工作台页面" };
-        page.AddThemeConstantOverride("separation", 10);
-        AddChild(page);
-        page.AddChild(BuildMasthead());
-        page.AddChild(WorkbenchStyle.Rule(WorkbenchStyle.Border));
+        Binder.OnSignal<Action<int>>(
+            OnViewPresetChanged,
+            handler => _viewport.ViewPresetChanged += handler,
+            handler => _viewport.ViewPresetChanged -= handler);
 
-        var columns = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
-        columns.AddThemeConstantOverride("separation", 14);
-        page.AddChild(columns);
-        BuildStage();
-        columns.AddChild(_views);
-        columns.AddChild(BuildInspector(catalog));
+        foreach (CheckBox check in _slots)
+        {
+            Binder.OnSignal<BaseButton.ToggledEventHandler>(
+                OnSlotToggled,
+                handler => check.Toggled += handler,
+                handler => check.Toggled -= handler);
+        }
 
-        _views.Resized += UpdateSectionVisibility;
-        Reset();
+        if (CommissionMode) BindCommissionInputs();
+
+        BindState();
         UpdateSectionVisibility();
     }
 
-    #region 布局
-
-    private Control BuildMasthead()
+    protected override void OnOpen()
     {
-        var masthead = new HBoxContainer { CustomMinimumSize = new Vector2(0, 44) };
-        masthead.AddThemeConstantOverride("separation", 12);
+        if (_facade.Report is { } report) _report.Bind(report);
+        UpdateSectionVisibility();
+    }
 
-        var titles = new VBoxContainer { SizeFlagsVertical = SizeFlags.ShrinkCenter };
-        titles.AddThemeConstantOverride("separation", 1);
-        var wordmark = new HBoxContainer();
-        wordmark.AddThemeConstantOverride("separation", 6);
-        wordmark.AddChild(WorkbenchStyle.MakeLabel("PC", 10, WorkbenchStyle.Mint, WorkbenchStyle.MonoFont));
-        wordmark.AddChild(WorkbenchStyle.MakeLabel("ARCHITECT", 10, WorkbenchStyle.Muted, WorkbenchStyle.DisplayFont));
-        titles.AddChild(wordmark);
-        titles.AddChild(WorkbenchStyle.MakeLabel(CrateMode ? "神秘箱 03 · 首箱" : "沙盒工作台",
-            24, WorkbenchStyle.Text, WorkbenchStyle.TextFont));
-        masthead.AddChild(titles);
-        masthead.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill, MouseFilter = MouseFilterEnum.Ignore });
+    protected override void UpdateView()
+    {
+        UpdateSectionVisibility();
+    }
+
+    private void CacheNodes()
+    {
+        _viewport = GetNode<BenchViewport>("%Viewport");
+        _section = GetNode<SectionDrawing>("%Section");
+        _case = GetNode<OptionButton>("%CaseChoice");
+        _memory = GetNode<OptionButton>("%MemoryChoice");
+        _scenario = GetNode<OptionButton>("%ScenarioChoice");
+        _gpu = GetNode<OptionButton>("%GpuChoice");
+        _air = GetNode<VBoxContainer>("%AirFields");
+        _water = GetNode<VBoxContainer>("%WaterFields");
+        _goal = GetNode<Label>("%Goal");
+        _hardwareName = GetNode<Label>("%HardwareName");
+        _crateInventory = GetNode<Label>("%CrateInventory");
+        _crateResult = GetNode<Label>("%CrateResult");
+        _slotsRow = GetNode<HBoxContainer>("%SlotsRow");
+        _offset = GetNode<HSlider>("%Offset");
+        _offsetText = GetNode<Label>("%OffsetText");
+        _status = GetNode<Label>("%Status");
+        _metrics = GetNode<Label>("%Metrics");
+        _messages = GetNode<Label>("%Messages");
+        _scenarioField = GetNode<VBoxContainer>("%ScenarioField");
+        _memoryField = GetNode<VBoxContainer>("%MemoryField");
+        _slotsField = GetNode<VBoxContainer>("%SlotsField");
+        _conditionsField = GetNode<VBoxContainer>("%ConditionsField");
+        _power = GetNode<VBoxContainer>("%Power");
+        _conditions = GetNode<HBoxContainer>("%Conditions");
+        _psu = GetNode<OptionButton>("%PsuChoice");
+        _workload = GetNode<OptionButton>("%WorkloadChoice");
+        _airflow = GetNode<OptionButton>("%AirflowChoice");
+        _views = GetNode<TabContainer>("%Views");
+        _runLoad = GetNode<Button>("%PowerRunLoad");
+        _powerResult = GetNode<Label>("%PowerResult");
+        _submit = GetNode<Button>("%SubmitButton");
+        _replay = GetNode<Button>("%ReplayButton");
+        _reset = GetNode<Button>("%ResetButton");
+        _statusChip = GetNode<PanelContainer>("%StatusChip");
+        _loadPanel = GetNode<PanelContainer>("%LoadPanel");
+        _sectionCell = GetNode<HBoxContainer>("%SectionCell");
+        _stripGrid = GetNode<GridContainer>("%StripGrid");
+        _menuButton = GetNode<Button>("%MenuButton");
+        _powerRunLoad = GetNode<Button>("%PowerRunLoad");
+        _commissionRunLoad = GetNode<Button>("%CommissionRunLoad");
+        _sidePanel = GetNode<CheckBox>("%SidePanelCheck");
+        _rgb = GetNode<CheckBox>("%RgbCheck");
+        _report = GetNode<BenchmarkReportView>("%ReportView");
+
+        for (int i = 0; i < _viewButtons.Length; i++)
+        {
+            _viewButtons[i] = GetNode<Button>($"%View{i}");
+        }
+
+        _runLoad = CommissionMode ? _commissionRunLoad : _powerRunLoad;
+    }
+
+    private void SetControllersFromFacade()
+    {
+        // StateView 由渲染 worker 维护，其 AssemblyController / ReportController 声明为 init-only；
+        // 场景实例由 UIManager 创建，无法使用对象初始化器。这里沿部分类边界写入其 init 访问器，
+        // 避免改动画布渲染代码或把控制器塞进路由载荷。
+        SetInitProperty(this, nameof(AssemblyController), _facade.Assembly);
+        SetInitProperty(this, nameof(ReportController), _facade.Report);
+        this.CommissionController = _facade.Commission;
+    }
+
+    private static void SetInitProperty<T>(object target, string name, T value)
+    {
+        PropertyInfo property = target.GetType().GetProperty(
+            name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException($"工作台界面缺少控制器属性：{name}");
+        property.SetValue(target, value);
+    }
+
+    private void ApplyWorkbenchStyle()
+    {
+        GetNode<PanelContainer>("%Frame").AddThemeStyleboxOverride("panel",
+            WorkbenchStyle.Box(WorkbenchStyle.Canvas, WorkbenchStyle.Canvas, 14, 12, 0, 0));
+
+        StyleLabel("%TitleLabel", 24, WorkbenchStyle.Text, WorkbenchStyle.TextFont);
+        StyleLabel("%PcWordmark", 10, WorkbenchStyle.Mint, WorkbenchStyle.MonoFont);
+        StyleLabel("%ArchWordmark", 10, WorkbenchStyle.Muted, WorkbenchStyle.DisplayFont);
+        StyleLabel("%SectionTitle", 13, WorkbenchStyle.Muted);
+        StyleLabel("%SectionNote", 11, WorkbenchStyle.Coral);
+        StyleLabel("%MetricsTitle", 13, WorkbenchStyle.Muted);
 
         _status.AddThemeFontOverride("font", WorkbenchStyle.MonoFont);
         _status.AddThemeFontSizeOverride("font_size", 13);
         _status.AddThemeColorOverride("font_color", WorkbenchStyle.Text);
         _status.SizeFlagsVertical = SizeFlags.ShrinkCenter;
-        _statusChip = WorkbenchStyle.SurfacePanel(WorkbenchStyle.Inset, WorkbenchStyle.Border, 10, 4, 2);
-        _statusChip.SizeFlagsVertical = SizeFlags.ShrinkCenter;
-        _statusChip.AddChild(_status);
-        masthead.AddChild(_statusChip);
 
-        var menuButton = new Button
-        {
-            Text = "模式选择",
-            TooltipText = "返回模式选择（ESC）",
-            FocusMode = FocusModeEnum.All,
-            CustomMinimumSize = new Vector2(86, 28),
-            SizeFlagsVertical = SizeFlags.ShrinkCenter,
-        };
-        WorkbenchStyle.ApplyGhost(menuButton, 28);
-        menuButton.Pressed += () => BackRequested?.Invoke();
-        masthead.AddChild(menuButton);
-        return masthead;
-    }
+        _goal.AddThemeFontOverride("font", WorkbenchStyle.TextFont);
+        _goal.AddThemeFontSizeOverride("font_size", 13);
+        _goal.AddThemeColorOverride("font_color", WorkbenchStyle.TextSoft);
+        _goal.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _goal.SizeFlagsHorizontal = SizeFlags.ExpandFill;
 
-    private void BuildStage()
-    {
-        var visualPage = new MarginContainer { Name = "装配视图" };
-        foreach (string side in new[] { "left", "right", "top", "bottom" })
-            visualPage.AddThemeConstantOverride("margin_" + side, 10);
-        _views.AddChild(visualPage);
+        _hardwareName.AddThemeFontOverride("font", WorkbenchStyle.TextFont);
+        _hardwareName.AddThemeFontSizeOverride("font_size", 11);
+        _hardwareName.AddThemeColorOverride("font_color", WorkbenchStyle.Muted);
+        _hardwareName.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _hardwareName.SizeFlagsHorizontal = SizeFlags.ExpandFill;
 
-        var visual = new VBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
-        visual.AddThemeConstantOverride("separation", 8);
-        visualPage.AddChild(visual);
-        visual.AddChild(BuildViewToolbar());
+        _crateInventory.AddThemeFontOverride("font", WorkbenchStyle.TextFont);
+        _crateInventory.AddThemeFontSizeOverride("font_size", 11);
+        _crateInventory.AddThemeColorOverride("font_color", WorkbenchStyle.Muted);
+        _crateInventory.SizeFlagsHorizontal = SizeFlags.ExpandFill;
 
-        var stage = WorkbenchStyle.SurfacePanel(WorkbenchStyle.Inset, WorkbenchStyle.BorderSoft, 1, 1, 2);
-        stage.SizeFlagsVertical = SizeFlags.ExpandFill;
-        stage.AddChild(_viewport);
-        visual.AddChild(stage);
-
-        visual.AddChild(BuildInstrumentStrip());
-
-        _report.ComparisonEnabled = !CrateMode;
-        _report.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        _report.SizeFlagsVertical = SizeFlags.ExpandFill;
-        _views.AddChild(_report);
-    }
-
-    private Control BuildViewToolbar()
-    {
-        var tools = new HBoxContainer { CustomMinimumSize = new Vector2(0, 28) };
-        tools.AddThemeConstantOverride("separation", 8);
-        tools.AddChild(WorkbenchStyle.MakeLabel("视图", 11, WorkbenchStyle.Muted));
-
-        var rail = WorkbenchStyle.SurfacePanel(WorkbenchStyle.Inset, WorkbenchStyle.BorderSoft, 3, 3, 2);
-        rail.SizeFlagsVertical = SizeFlags.ShrinkCenter;
-        var row = new HBoxContainer();
-        row.AddThemeConstantOverride("separation", 2);
-        rail.AddChild(row);
-        var group = new ButtonGroup();
-        string[] views = ["轴测", "正视", "侧视", "俯视", "特写"];
-        var buttons = new Button[views.Length];
-        for (int i = 0; i < views.Length; i++)
-        {
-            int view = i;
-            var button = new Button
-            {
-                Text = views[i],
-                ToggleMode = true,
-                ButtonGroup = group,
-                FocusMode = FocusModeEnum.All,
-                CustomMinimumSize = new Vector2(42, 26),
-                SizeFlagsVertical = SizeFlags.ShrinkCenter,
-            };
-            WorkbenchStyle.ApplySegment(button);
-            button.Pressed += () => _viewport.SetView(view);
-            row.AddChild(button);
-            buttons[i] = button;
-            if (i == 0) button.SetPressedNoSignal(true);
-        }
-        _viewport.ViewPresetChanged += active =>
-        {
-            for (int i = 0; i < buttons.Length; i++) buttons[i].SetPressedNoSignal(active == i);
-        };
-        tools.AddChild(rail);
-        tools.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill, MouseFilter = MouseFilterEnum.Ignore });
-
-        var sidePanel = new CheckBox
-        {
-            Text = "透明侧板",
-            FocusMode = FocusModeEnum.All,
-            SizeFlagsVertical = SizeFlags.ShrinkCenter,
-        };
-        sidePanel.Toggled += _viewport.ShowPanel;
-        tools.AddChild(sidePanel);
-        var rgb = new CheckBox
-        {
-            Text = "ARGB",
-            ButtonPressed = true,
-            TooltipText = "灯带与风扇导光环同步预览",
-            FocusMode = FocusModeEnum.All,
-            SizeFlagsVertical = SizeFlags.ShrinkCenter,
-        };
-        rgb.Toggled += _viewport.SetRgb;
-        tools.AddChild(rgb);
-        return tools;
-    }
-
-    private Control BuildInstrumentStrip()
-    {
-        var strip = WorkbenchStyle.SurfacePanel(WorkbenchStyle.Surface, WorkbenchStyle.BorderSoft, 10, 10, 2);
-        strip.CustomMinimumSize = new Vector2(0, 160);
-        var row = new GridContainer
-        {
-            Columns = 2,
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            SizeFlagsVertical = SizeFlags.ExpandFill,
-        };
-        row.AddThemeConstantOverride("h_separation", 12);
-        row.AddThemeConstantOverride("v_separation", 10);
-        _stripGrid = row;
-        strip.AddChild(row);
-
-        _sectionCell = new HBoxContainer
-        {
-            CustomMinimumSize = new Vector2(286, 0),
-            SizeFlagsVertical = SizeFlags.ExpandFill,
-        };
-        _sectionCell.AddThemeConstantOverride("separation", 12);
-        var sectionColumn = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
-        sectionColumn.AddThemeConstantOverride("separation", 5);
-        var sectionHead = new HBoxContainer();
-        sectionHead.AddThemeConstantOverride("separation", 8);
-        var sectionTitle = WorkbenchStyle.MakeLabel("正交剖面", 13, WorkbenchStyle.Muted);
-        sectionTitle.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        sectionHead.AddChild(sectionTitle);
-        sectionHead.AddChild(WorkbenchStyle.MakeLabel("红色为干涉区域", 11, WorkbenchStyle.Coral));
-        sectionColumn.AddChild(sectionHead);
-        var sectionFrame = WorkbenchStyle.SurfacePanel(WorkbenchStyle.Inset, WorkbenchStyle.BorderSoft, 0, 0, 2);
-        sectionFrame.SizeFlagsVertical = SizeFlags.ExpandFill;
-        sectionFrame.AddChild(_section);
-        sectionColumn.AddChild(sectionFrame);
-        _sectionCell.AddChild(sectionColumn);
-        _sectionCell.AddChild(new ColorRect
-        {
-            Color = WorkbenchStyle.Alpha(WorkbenchStyle.BorderSoft, .9f),
-            CustomMinimumSize = new Vector2(1, 0),
-            SizeFlagsVertical = SizeFlags.ExpandFill,
-            MouseFilter = MouseFilterEnum.Ignore,
-        });
-        row.AddChild(_sectionCell);
-
-        var diagnostics = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
-        diagnostics.AddThemeConstantOverride("separation", 5);
-        diagnostics.AddChild(WorkbenchStyle.MakeLabel("装配诊断", 13, WorkbenchStyle.Muted));
         _metrics.AddThemeFontOverride("font", WorkbenchStyle.MonoFont);
         _metrics.AddThemeFontSizeOverride("font_size", 13);
         _metrics.AddThemeColorOverride("font_color", WorkbenchStyle.TextSoft);
         _metrics.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         _metrics.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        diagnostics.AddChild(_metrics);
+
         _messages.AddThemeFontOverride("font", WorkbenchStyle.TextFont);
         _messages.AddThemeFontSizeOverride("font_size", 14);
         _messages.AddThemeColorOverride("font_color", WorkbenchStyle.Text);
@@ -283,91 +264,106 @@ public partial class ClearanceWorkbench : PanelContainer
         _messages.SizeFlagsVertical = SizeFlags.ExpandFill;
         _messages.VerticalAlignment = VerticalAlignment.Top;
         _messages.MouseFilter = MouseFilterEnum.Pass;
-        diagnostics.AddChild(_messages);
-        row.AddChild(diagnostics);
-        return strip;
+
+        _offsetText.AddThemeFontOverride("font", WorkbenchStyle.MonoFont);
+        _offsetText.AddThemeFontSizeOverride("font_size", 11);
+        _offsetText.AddThemeColorOverride("font_color", WorkbenchStyle.Mint);
+        _offsetText.SizeFlagsVertical = SizeFlags.ShrinkCenter;
+
+        _powerResult.AddThemeFontOverride("font", WorkbenchStyle.TextFont);
+        _powerResult.AddThemeFontSizeOverride("font_size", 12);
+        _powerResult.AddThemeColorOverride("font_color", WorkbenchStyle.Text);
+        _powerResult.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+
+        _crateResult.AddThemeFontOverride("font", WorkbenchStyle.TextFont);
+        _crateResult.AddThemeFontSizeOverride("font_size", 11);
+        _crateResult.AddThemeColorOverride("font_color", WorkbenchStyle.Text);
+        _crateResult.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        _crateResult.Visible = CrateMode;
+
+        foreach (string name in new[]
+                 {
+                     "%ScenarioCaption", "%CaseCaption", "%GpuCaption", "%MemoryCaption",
+                     "%SlotsCaption", "%OffsetCaption", "%ConditionsCaption", "%PsuCaption",
+                 })
+        {
+            StyleLabel(name, 13, WorkbenchStyle.Muted, WorkbenchStyle.TextFont);
+        }
+
+        StyleLabel("%LoadHeading", 15, WorkbenchStyle.Text, WorkbenchStyle.TextFont);
+
+        foreach (string panel in new[]
+                 {
+                     "%StagePanel", "%InstrumentStrip", "%SectionFrame", "%InventoryPanel",
+                     "%LoadPanel",
+                 })
+        {
+            GetNode<PanelContainer>(panel).AddThemeStyleboxOverride("panel",
+                WorkbenchStyle.Box(WorkbenchStyle.Surface, WorkbenchStyle.BorderSoft, 10, 10, 2));
+        }
+
+        GetNode<PanelContainer>("%StagePanel").AddThemeStyleboxOverride("panel",
+            WorkbenchStyle.Box(WorkbenchStyle.Inset, WorkbenchStyle.BorderSoft, 1, 1, 2));
+        GetNode<PanelContainer>("%SectionFrame").AddThemeStyleboxOverride("panel",
+            WorkbenchStyle.Box(WorkbenchStyle.Inset, WorkbenchStyle.BorderSoft, 0, 0, 2));
+        GetNode<PanelContainer>("%InstrumentStrip").AddThemeStyleboxOverride("panel",
+            WorkbenchStyle.Box(WorkbenchStyle.Surface, WorkbenchStyle.BorderSoft, 10, 10, 2));
+        GetNode<PanelContainer>("%InventoryPanel").AddThemeStyleboxOverride("panel",
+            WorkbenchStyle.Box(WorkbenchStyle.Inset, WorkbenchStyle.BorderSoft, 10, 8, 2));
+        GetNode<PanelContainer>("%LoadPanel").AddThemeStyleboxOverride("panel",
+            WorkbenchStyle.Box(WorkbenchStyle.SurfaceRaised, WorkbenchStyle.BorderSoft, 10, 10, 3));
+        GetNode<PanelContainer>("%Inspector").AddThemeStyleboxOverride("panel",
+            WorkbenchStyle.Box(WorkbenchStyle.Surface, WorkbenchStyle.Border, 0, 0, 3));
+        GetNode<PanelContainer>("%ViewRail").AddThemeStyleboxOverride("panel",
+            WorkbenchStyle.Box(WorkbenchStyle.Inset, WorkbenchStyle.BorderSoft, 3, 3, 2));
+
+        WorkbenchStyle.ApplyStatusChip(_statusChip, WorkbenchStyle.Mint);
+        WorkbenchStyle.ApplyGhost(_menuButton, 28);
+        WorkbenchStyle.ApplyPrimary(_powerRunLoad, 34);
+        WorkbenchStyle.ApplyPrimary(_commissionRunLoad, 34);
+        WorkbenchStyle.ApplyPrimary(_submit, 34);
+        WorkbenchStyle.ApplyGhost(_reset, 30);
+
+        _replay.CustomMinimumSize = new Vector2(0, 30);
+        _reset.CustomMinimumSize = new Vector2(0, 30);
+
+        foreach (Button button in _viewButtons)
+        {
+            WorkbenchStyle.ApplySegment(button);
+        }
     }
 
-    private Control BuildInspector(BenchCatalog catalog)
+    private void StyleLabel(string name, int size, Color color, Font? font = null)
     {
-        var inspector = WorkbenchStyle.SurfacePanel(WorkbenchStyle.Surface, WorkbenchStyle.Border, 0, 0, 3);
-        inspector.CustomMinimumSize = new Vector2(334, 0);
-        inspector.SizeFlagsVertical = SizeFlags.ExpandFill;
-        var scroll = new ScrollContainer
-        {
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            SizeFlagsVertical = SizeFlags.ExpandFill,
-            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
-            VerticalScrollMode = ScrollContainer.ScrollMode.Auto,
-            FollowFocus = true,
-        };
-        inspector.AddChild(scroll);
-        var pad = new MarginContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        pad.AddThemeConstantOverride("margin_left", 14);
-        pad.AddThemeConstantOverride("margin_right", 14);
-        pad.AddThemeConstantOverride("margin_top", 12);
-        pad.AddThemeConstantOverride("margin_bottom", 12);
-        scroll.AddChild(pad);
-        var form = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        form.AddThemeConstantOverride("separation", 8);
-        pad.AddChild(form);
+        var label = GetNode<Label>(name);
+        label.AddThemeFontOverride("font", font ?? WorkbenchStyle.TextFont);
+        label.AddThemeFontSizeOverride("font_size", size);
+        label.AddThemeColorOverride("font_color", color);
+    }
 
-        _goal.AddThemeFontOverride("font", WorkbenchStyle.TextFont);
-        _goal.AddThemeFontSizeOverride("font_size", 13);
-        _goal.AddThemeColorOverride("font_color", WorkbenchStyle.TextSoft);
-        _goal.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        _goal.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        form.AddChild(_goal);
-
-        _hardwareName.AddThemeFontOverride("font", WorkbenchStyle.TextFont);
-        _hardwareName.AddThemeFontSizeOverride("font_size", 11);
-        _hardwareName.AddThemeColorOverride("font_color", WorkbenchStyle.Muted);
-        _hardwareName.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        _hardwareName.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        form.AddChild(_hardwareName);
-
-        _crateInventory.AddThemeFontOverride("font", WorkbenchStyle.TextFont);
-        _crateInventory.AddThemeFontSizeOverride("font_size", 11);
-        _crateInventory.AddThemeColorOverride("font_color", WorkbenchStyle.Muted);
-        _crateInventory.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        _crateInventory.Visible = CrateMode;
-        var inventory = WorkbenchStyle.SurfacePanel(WorkbenchStyle.Inset, WorkbenchStyle.BorderSoft, 10, 8, 2);
-        inventory.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        inventory.Visible = CrateMode;
-        inventory.AddChild(_crateInventory);
-        form.AddChild(inventory);
-
-        form.AddChild(WorkbenchStyle.Rule(WorkbenchStyle.BorderSoft));
+    private void PopulateCatalog()
+    {
+        BenchCatalog catalog = Catalog;
 
         _scenario.AddItem("双塔风冷与内存");
         _scenario.AddItem("前置 360 冷排与显卡");
         StyleSelect(_scenario);
         _scenario.Visible = !CrateMode;
-        _scenario.ItemSelected += _ => Reset();
-        _scenarioField = Field(form, "装配方案", _scenario);
-        _scenarioField.Visible = !CrateMode;
 
         foreach (var item in catalog.Cases)
-            _case.AddItem($"{item.Name} · 高 {item.HeightLimit} / 长 {item.GpuLimit} mm");
+            _case.AddItem(CommissionMode
+                ? $"{item.Name} · ¥{item.Price:N0}"
+                : $"{item.Name} · 高 {item.HeightLimit} / 长 {item.GpuLimit} mm");
         StyleSelect(_case);
-        _case.ItemSelected += _ => Refresh();
-        Field(form, "机箱", _case);
 
-        _water.AddThemeConstantOverride("separation", 5);
         foreach (var card in catalog.Graphics)
-            _gpu.AddItem($"{card.Name} · {card.Dimensions[0]} mm");
+            _gpu.AddItem($"{card.Name} · {card.Dimensions[0]} mm" + (CommissionMode ? $" · ¥{card.Price:N0}" : ""));
         StyleSelect(_gpu);
-        _gpu.ItemSelected += _ => Refresh();
-        Field(_water, "显卡型号", _gpu);
-        form.AddChild(_water);
 
         foreach (var item in catalog.Ram)
-            _memory.AddItem($"{item.Name} · {item.Dimensions[2]} mm");
+            _memory.AddItem($"{item.Name} · {item.Dimensions[2]} mm" + (CommissionMode ? $" · ¥{item.Price:N0}/条" : ""));
         StyleSelect(_memory);
         _memory.Visible = !CrateMode;
-        _memory.ItemSelected += _ => Refresh();
-        _memoryField = Field(form, "内存型号", _memory);
-        _memoryField.Visible = !CrateMode;
 
         _slotsRow.AddThemeConstantOverride("separation", 4);
         _slotsRow.SizeFlagsHorizontal = SizeFlags.ExpandFill;
@@ -381,100 +377,76 @@ public partial class ClearanceWorkbench : PanelContainer
             };
             _slotsRow.AddChild(check);
             _slots.Add(check);
-            check.Toggled += _ => Refresh();
         }
-        _slotsRow.Visible = !CrateMode;
-        _slotsField = Field(form, "已安装的内存插槽", _slotsRow);
-        _slotsField.Visible = !CrateMode;
 
-        _air.AddThemeConstantOverride("separation", 5);
-        var offsetHead = new HBoxContainer();
-        var offsetLabel = WorkbenchStyle.Field("前扇上移");
-        offsetLabel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        offsetHead.AddChild(offsetLabel);
-        _offsetText.AddThemeFontOverride("font", WorkbenchStyle.MonoFont);
-        _offsetText.AddThemeFontSizeOverride("font_size", 11);
-        _offsetText.AddThemeColorOverride("font_color", WorkbenchStyle.Mint);
-        _offsetText.SizeFlagsVertical = SizeFlags.ShrinkCenter;
-        offsetHead.AddChild(_offsetText);
-        _air.AddChild(offsetHead);
         _offset.MaxValue = catalog.Cooler.Adjustable_y_max;
         _offset.CustomMinimumSize = new Vector2(0, 22);
-        _air.AddChild(_offset);
-        _offset.ValueChanged += _ => Refresh();
-        form.AddChild(_air);
 
-        _loadPanel = WorkbenchStyle.SurfacePanel(WorkbenchStyle.SurfaceRaised, WorkbenchStyle.BorderSoft, 10, 10, 3);
-        _loadPanel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        _loadPanel.AddChild(_power);
-        form.AddChild(_loadPanel);
-
-        _power.AddThemeConstantOverride("separation", 6);
-        _power.AddChild(WorkbenchStyle.Heading("整机负载测试"));
         foreach (var profile in catalog.Benchmark.Workloads) _workload.AddItem(profile.Name);
         foreach (var preset in catalog.Benchmark.Airflows) _airflow.AddItem(preset.Name);
         StyleSelect(_workload);
         StyleSelect(_airflow);
-        _workload.ItemSelected += _ => Refresh();
-        _airflow.ItemSelected += _ => Refresh();
-        _conditions.AddThemeConstantOverride("separation", 6);
-        _conditions.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        _conditions.AddChild(_workload);
-        _conditions.AddChild(_airflow);
-        _conditions.Visible = !CrateMode;
-        _conditionsField = Field(_power, "目标用途与通风工况", _conditions);
-        _conditionsField.Visible = !CrateMode;
 
         foreach (var psu in catalog.PowerSupplies)
-            _psu.AddItem($"{psu.Name} · 持续 {psu.Continuous} / 短时 {psu.Pulse} W");
+            _psu.AddItem(CommissionMode
+                ? $"{psu.Name} · ¥{psu.Price:N0}"
+                : $"{psu.Name} · 持续 {psu.Continuous} / 短时 {psu.Pulse} W");
         StyleSelect(_psu);
-        _psu.ItemSelected += _ => Refresh();
-        Field(_power, "测试电源", _psu);
 
-        WorkbenchStyle.ApplyPrimary(_runLoad, 34);
-        _runLoad.Pressed += RunLoad;
-        _power.AddChild(_runLoad);
+        _views.SetTabTitle(0, "装配视图");
+        _views.SetTabTitle(1, "负载报告");
+        _views.CurrentTab = 0;
+        _views.SetTabDisabled(1, true);
 
-        _powerResult.AddThemeFontOverride("font", WorkbenchStyle.TextFont);
-        _powerResult.AddThemeFontSizeOverride("font_size", 12);
-        _powerResult.AddThemeColorOverride("font_color", WorkbenchStyle.Text);
-        _powerResult.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        _power.AddChild(_powerResult);
-
-        _crateResult.AddThemeFontOverride("font", WorkbenchStyle.TextFont);
-        _crateResult.AddThemeFontSizeOverride("font_size", 11);
-        _crateResult.AddThemeColorOverride("font_color", WorkbenchStyle.Text);
-        _crateResult.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        _crateResult.Visible = CrateMode;
-
-        WorkbenchStyle.ApplyPrimary(_submit, 34);
-        _submit.Visible = CrateMode;
-        _submit.Disabled = true;
-        _submit.Pressed += SubmitCrate;
-        _power.AddChild(_submit);
-
-        _replay.CustomMinimumSize = new Vector2(0, 30);
-        _replay.Visible = false;
-        _replay.Pressed += ReplayCrate;
-        _power.AddChild(_replay);
-        _power.AddChild(_crateResult);
-
-        _reset.CustomMinimumSize = new Vector2(0, 30);
-        WorkbenchStyle.ApplyGhost(_reset, 30);
-        _reset.Pressed += Reset;
-        form.AddChild(_reset);
-        return inspector;
+        if (_facade.Assembly?.Challenge is { } challenge)
+        {
+            RestrictChoices(_case, challenge.CaseIndices);
+            RestrictChoices(_gpu, challenge.GpuIndices);
+            RestrictChoices(_psu, challenge.PsuIndices);
+            var kit = challenge.Fixed;
+            var slots = kit.Slots.Select(index => catalog.Board.Slots[index].Name);
+            var cooler = kit.Front360 ? catalog.Liquid.Name : catalog.Cooler.Name;
+            _crateInventory.Text =
+                $"箱内配件\n机箱 {string.Join(" / ", challenge.CaseIndices.Select(index => catalog.Cases[index].Name))}\n" +
+                $"显卡 {string.Join(" / ", challenge.GpuIndices.Select(index => catalog.Graphics[index].Name))}\n" +
+                $"电源 {string.Join(" / ", challenge.PsuIndices.Select(index => catalog.PowerSupplies[index].Name))}\n" +
+                $"固定件 {cooler}、{catalog.Ram[kit.RamIndex].Name} ×{kit.Slots.Length}（{string.Join(" + ", slots)}）\n" +
+                $"{catalog.Benchmark.Workloads[kit.WorkloadIndex].Name}、{catalog.Benchmark.Airflows[kit.AirflowIndex].Name}";
+        }
     }
 
-    private static VBoxContainer Field(Container parent, string caption, Control control)
+    private static void RestrictChoices(OptionButton option, IReadOnlyCollection<int> allowed)
     {
-        var group = new VBoxContainer();
-        group.AddThemeConstantOverride("separation", 3);
-        group.AddChild(WorkbenchStyle.Field(caption));
-        control.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        group.AddChild(control);
-        parent.AddChild(group);
-        return group;
+        for (int i = 0; i < option.ItemCount; i++)
+            option.SetItemDisabled(i, !allowed.Contains(i));
+    }
+
+    private void ConfigureModeVisibility()
+    {
+        _scenarioField.Visible = !CrateMode && !CommissionMode;
+        _memoryField.Visible = !CrateMode;
+        _slotsField.Visible = !CrateMode;
+        _conditions.Visible = !CrateMode;
+        _conditionsField.Visible = !CrateMode;
+        _workload.Visible = !CommissionMode;
+        _powerRunLoad.Visible = !CommissionMode;
+        _commissionRunLoad.Visible = CommissionMode;
+        _runLoad = CommissionMode ? _commissionRunLoad : _powerRunLoad;
+        _runLoad.Text = CommissionMode ? "运行负载测试" : "运行整机负载测试";
+        _menuButton.Text = CommissionMode ? "返回委托" : "模式选择";
+        _menuButton.TooltipText = CommissionMode ? "返回委托（ESC）" : "返回模式选择（ESC）";
+        GetNode<Label>("%ConditionsCaption").Text =
+            CommissionMode ? "通风工况" : "目标用途与通风工况";
+
+        string title = CommissionMode
+            ? $"委托 {_facade.Commission!.Order.Id}"
+            : _facade.Assembly?.Challenge?.Title ?? "沙盒工作台";
+        GetNode<Label>("%TitleLabel").Text = title;
+
+        _submit.Visible = false;
+        _replay.Visible = false;
+        GetNode<PanelContainer>("%InventoryPanel").Visible = CrateMode;
+        GetNode<PanelContainer>("%CommissionChecklist").Visible = CommissionMode;
     }
 
     private static void StyleSelect(OptionButton option)
@@ -488,164 +460,79 @@ public partial class ClearanceWorkbench : PanelContainer
     private void UpdateSectionVisibility()
     {
         if (_sectionCell == null) return;
-        // 首次同步调用时 _views 尚未完成布局，Width 为 0；等 Resized 拿到真实宽度再切换列数，
-        // 避免进入工作台时先闪一帧单列布局。
         if (_stripGrid != null && _views.Size.X > 0) _stripGrid.Columns = _views.Size.X < 560 ? 1 : 2;
     }
 
-    #endregion
+    #region 工作台交互
 
-    #region 状态与流程
+    private void BindState()
+    {
+        if (_facade.Report is { } report) _report.Bind(report);
+
+        if (_facade.Assembly is { } assembly)
+        {
+            Binder.Add(assembly.SubscribeState(RenderWorkbenchState, this).Dispose);
+            RenderWorkbenchState(assembly.State);
+            return;
+        }
+
+        if (_facade.Commission is { } commission)
+        {
+            var events = ((IEventBusProvider)commission).EventBus;
+            var subscription = events.On(
+                CommissionEvents.StateChanged,
+                (state, _) => RenderCommissionState(state),
+                this);
+            Binder.Add(subscription.Off);
+            RenderCommissionState(commission.Snapshot);
+        }
+    }
+
+    private void OnSlotToggled(bool _) => Refresh();
+
+    private void OnViewPresetChanged(int active)
+    {
+        for (int i = 0; i < _viewButtons.Length; i++)
+            _viewButtons[i].SetPressedNoSignal(active == i);
+    }
 
     private void Reset()
     {
-        if (_submitted) return;
-        var setup = _rules!.Catalog.Initial;
-        _resetting = true;
-        bool liquid = CrateMode || _scenario.Selected == 1;
-        _air.Visible = !liquid;
-        _water.Visible = liquid;
-        _power.Visible = liquid;
-        _loadPanel.Visible = liquid;
-        _psu.Select(0);
-        _hasTestResult = false;
-        _lastReport = null;
-        _report.InvalidateCurrent();
-        _airflow.Select(0);
-        _workload.Select(CrateMode ? 1 : 0);
-        _views.CurrentTab = 0;
-        _views.TabsVisible = liquid;
-        _views.SetTabDisabled(1, true);
-        if (CrateMode)
-        {
-            _goal.Text = "目标：从首箱配件中选出可点亮的组合，通过 4K 整机负载测试，提交综合评分。";
-            _hardwareName.Text = $"{_rules.Catalog.Board.Name}  /  {_rules.Catalog.Liquid.Name}  /  {_rules.Catalog.Ram[0].Name}";
-        }
+        if (_facade.Commission is { } commission)
+            commission.ResetSetup();
         else
-        {
-            _goal.Text = liquid ? "目标：保留前置 360 冷排，让显卡装入机箱。" : "目标：保留 32 GB 双通道，让侧板顺利合上。";
-            _hardwareName.Text = _rules.Catalog.Board.Name + "  /  " + (liquid ? _rules.Catalog.Liquid.Name : _rules.Catalog.Cooler.Name);
-        }
-        _case.Select(CrateMode ? 0 : setup.CaseIndex);
-        _gpu.Select(0);
-        _memory.Select(CrateMode ? 0 : setup.RamIndex);
-        int[] slots = CrateMode ? CrateSlots : setup.Slots;
-        for (int i = 0; i < _slots.Count; i++) _slots[i].SetPressedNoSignal(slots.Contains(i));
-        _offset.Value = CrateMode ? 0 : setup.Offset;
-        if (CrateMode)
-        {
-            _case.Disabled = false;
-            _gpu.Disabled = false;
-            _psu.Disabled = false;
-            _reset.Disabled = false;
-            _submit.Visible = true;
-            _replay.Visible = false;
-        }
-        _resetting = false;
-        Refresh();
+            _facade.Assembly!.Reset(_scenario.Selected == 1);
     }
 
     private BenchSetup Selection()
     {
-        if (CrateMode)
-            return new BenchSetup(_case.Selected, 0, CrateSlots, 0, true, _gpu.Selected, 0, 1, _psu.Selected);
         var slots = Enumerable.Range(0, _slots.Count).Where(i => _slots[i].ButtonPressed).ToArray();
-        return new BenchSetup(_case.Selected, _memory.Selected, slots, (int)_offset.Value, _scenario.Selected == 1, _gpu.Selected, _airflow.Selected, _workload.Selected, _psu.Selected);
+        return new BenchSetup(
+            _case.Selected, _memory.Selected, slots, (int)_offset.Value,
+            _scenario.Selected == 1, _gpu.Selected, _airflow.Selected, _workload.Selected, _psu.Selected);
     }
 
     private void RunLoad()
     {
-        if (_rules == null || _runLoad.Disabled) return;
-        var setup = Selection();
-        var result = _rules.TestLoad(setup, _psu.Selected);
-        _hasTestResult = result.Report != null;
-        _lastReport = null;
-        if (result.Report is { } report)
-        {
-            _report.Display(report, CrateMode ? null : CaptureRun(setup));
-            _views.SetTabDisabled(1, false);
-            _views.CurrentTab = 1;
-            if (CrateMode)
-            {
-                _lastReport = report;
-                _submit.Disabled = false;
-                SetTextColor(_crateResult, WorkbenchStyle.Muted);
-                _crateResult.Text = $"当前配置测试总分  {report.Total.Score:F1} · {report.Total.Grade}，可提交。";
-            }
-        }
+        if (_facade.Commission is { } commission)
+            commission.RunBenchmark();
         else
-        {
-            _report.InvalidateCurrent("本次测试未通过，复测通过后可继续。");
-            _views.CurrentTab = 0;
-            _views.SetTabDisabled(1, true);
-            if (CrateMode)
-            {
-                _submit.Disabled = true;
-                SetTextColor(_crateResult, StateColor("BLOCKED"));
-                _crateResult.Text = "测试未通过，提交不可用。";
-            }
-        }
-        _powerResult.Text = $"持续  {result.Sustained} W  /  峰值  {result.Peak} W\n{result.Message}";
-        var state = StateColor(result.Status);
-        SetTextColor(_powerResult, state);
-        SetStatus(result.Status switch
-        {
-            "BLOCKED" => "BLOCKED    测试断电",
-            "DEGRADED" => "DEGRADED    负载降级",
-            _ => "OPTIMAL    负载通过"
-        }, state);
+            _facade.Assembly!.RunLoad();
     }
 
-    private BenchmarkRunIdentity CaptureRun(BenchSetup setup)
+    private void SubmitCrate() => _facade.Assembly!.SubmitCrate();
+
+    private void ReplayCrate() => _facade.Assembly!.ReplayCrate();
+
+    private void Refresh()
     {
-        var catalog = _rules!.Catalog;
-        var slots = setup.Slots
-            .Where(index => index >= 0 && index < catalog.Board.Slots.Length)
-            .OrderBy(index => index)
-            .Select(index => catalog.Board.Slots[index].Name);
-        return new BenchmarkRunIdentity(
-            catalog.Cases[setup.CaseIndex].Name,
-            catalog.Graphics[setup.GpuIndex].Name,
-            catalog.PowerSupplies[setup.PsuIndex].Name,
-            catalog.Ram[setup.RamIndex].Name,
-            string.Join(" + ", slots));
-    }
+        if (_renderingSetup) return;
 
-    private void SubmitCrate()
-    {
-        if (!CrateMode || _submitted || _lastReport is not { } report) return;
-
-        _submitted = true;
-        if (_bestScore is not { } best || report.Total.Score > best)
-        {
-            _bestScore = report.Total.Score;
-            _bestGrade = report.Total.Grade;
-        }
-        SetTextColor(_crateResult, StateColor("OPTIMAL"));
-        _crateResult.Text = $"本次得分  {report.Total.Score:F1} · {report.Total.Grade}    " +
-            $"本次访问最佳  {_bestScore!.Value:F1} · {_bestGrade}\n配置已锁定，点击“再次挑战”开始新一轮。";
-        _submit.Disabled = true;
-        _submit.Visible = false;
-        _replay.Visible = true;
-        _case.Disabled = true;
-        _gpu.Disabled = true;
-        _psu.Disabled = true;
-        _runLoad.Disabled = true;
-        _reset.Disabled = true;
-    }
-
-    private void ReplayCrate()
-    {
-        if (!CrateMode || !_submitted) return;
-
-        _submitted = false;
-        _replay.Visible = false;
-        _submit.Visible = true;
-        _case.Disabled = false;
-        _gpu.Disabled = false;
-        _psu.Disabled = false;
-        _reset.Disabled = false;
-        Reset();
+        var setup = Selection();
+        if (_facade.Commission is { } commission)
+            commission.SetSetup(setup);
+        else
+            _facade.Assembly!.ChangeSetup(setup);
     }
 
     private static void SetTextColor(Label label, Color color)
@@ -668,55 +555,6 @@ public partial class ClearanceWorkbench : PanelContainer
         WorkbenchStyle.ApplyStatusChip(_statusChip, color);
     }
 
-    private void Refresh()
-    {
-        if (_resetting || _rules == null || _submitted) return;
-        if (CrateMode)
-        {
-            _lastReport = null;
-            _submit.Disabled = true;
-            SetTextColor(_crateResult, WorkbenchStyle.Muted);
-            _crateResult.Text = _bestScore is { } best
-                ? $"本次访问最佳  {best:F1} · {_bestGrade}\n当前配置尚未通过测试。"
-                : "完成一次当前配置的 4K 负载测试后可提交评分。";
-        }
-        var result = _rules.Inspect(Selection());
-        if (_hasTestResult) _report.MarkStale();
-        _runLoad.Disabled = result.Status == "BLOCKED";
-        _powerResult.Text = _runLoad.Disabled ? "请先解除装配阻断。" : _hasTestResult ? "配置已变更，待复测。" : "等待测试。";
-        SetTextColor(_powerResult, WorkbenchStyle.Muted);
-        _viewport.Display(result);
-        _section.Display(result);
-        _offsetText.Text = $"{_offset.Value:0} mm";
-        _metrics.Text = $"侧板余量  {result.Headroom:+0;-0;0} mm\n{result.Capacity} GB    /    {result.Channels} 通道    /    {result.Bandwidth:0.0} GB/s";
-        if (result.GpuLimit.HasValue)
-        {
-            var kit = _rules.Catalog.Liquid;
-            _metrics.Text = $"冷排 {kit.CoreThickness} + 风扇 {kit.FanThickness} mm\n显卡有效限长  {result.GpuLimit} mm    /    余量  {result.GpuMargin:+0;-0;0} mm";
-            if (result.PsuMargin.HasValue)
-                _metrics.Text += $"\n电源仓余量  {result.PsuMargin:+0;-0;0} mm";
-        }
-        var state = StateColor(result.Status);
-        SetStatus(result.Status switch
-        {
-            "BLOCKED" => "BLOCKED    装配阻断",
-            "DEGRADED" => "DEGRADED    带宽降级",
-            _ => "OPTIMAL    装配通过"
-        }, state);
-        SetTextColor(_messages, state);
-        _messages.Text = result.Issues.Length > 0 ? string.Join("\n", result.Issues.Select(issue => issue.Message))
-            : result.GpuLimit.HasValue ? "装配目标达成。显卡和前置冷排均可安装。"
-            : result.Capacity == 32 ? "装配目标达成。双通道已启用，侧板可闭合。" : "装配通过。请保留两条内存以满足 32 GB 目标。";
-        _messages.TooltipText = _messages.Text;
-        SyncOptionTooltip(_scenario);
-        SyncOptionTooltip(_case);
-        SyncOptionTooltip(_gpu);
-        SyncOptionTooltip(_memory);
-        SyncOptionTooltip(_workload);
-        SyncOptionTooltip(_airflow);
-        SyncOptionTooltip(_psu);
-    }
-
     private static void SyncOptionTooltip(OptionButton option)
     {
         int index = option.Selected;
@@ -724,10 +562,4 @@ public partial class ClearanceWorkbench : PanelContainer
     }
 
     #endregion
-
-    public override void _ExitTree()
-    {
-        _rules?.Dispose();
-        _rules = null;
-    }
 }

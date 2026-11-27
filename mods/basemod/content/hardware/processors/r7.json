@@ -1,0 +1,8 @@
+{
+  "order": 0,
+  "name": "战未来 R7",
+  "price": 1299,
+  "performance": 120,
+  "throttle": 90,
+  "asset": "assets/models/processors/r7.glb"
+}

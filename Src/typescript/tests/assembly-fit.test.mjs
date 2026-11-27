@@ -1,9 +1,9 @@
-import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { inspect, testLoad } from '../../../Resource/agents/default-agent/builtins/assembly-fit.mjs';
+import { loadBasemodCatalog } from './fixtures/basemod.mjs';
 
-const bench = JSON.parse(readFileSync(new URL('../../../Resource/hardware/clearance-bench.json', import.meta.url), 'utf8').replace(/^\uFEFF/, ''));
+const bench = loadBasemodCatalog();
 const evaluate = changes => inspect(bench, { ...bench.initial, ...changes });
 
 test('48 mm DIMM intersects fan by 6 mm, lifting fan reaches both contact boundaries', () => {

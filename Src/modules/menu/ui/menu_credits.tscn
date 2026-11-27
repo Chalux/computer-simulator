@@ -1,0 +1,195 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Src/modules/menu/MenuCreditsDialog.cs" id="1_screen"]
+
+[node name="MenuCreditsDialog" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+script = ExtResource("1_screen")
+
+[node name="Dim" type="ColorRect" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="Center" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Panel" type="PanelContainer" parent="Center"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(524, 0)
+layout_mode = 2
+
+[node name="Body" type="VBoxContainer" parent="Center/Panel"]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="Header" type="HBoxContainer" parent="Center/Panel/Body"]
+custom_minimum_size = Vector2(0, 46)
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Titles" type="VBoxContainer" parent="Center/Panel/Body/Header"]
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_constants/separation = 3
+
+[node name="Kicker" type="Label" parent="Center/Panel/Body/Header/Titles"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+text = "CREDITS"
+
+[node name="Title" type="Label" parent="Center/Panel/Body/Header/Titles"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+text = "制作名单"
+
+[node name="HeaderExpander" type="Control" parent="Center/Panel/Body/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="CloseButton" type="Button" parent="Center/Panel/Body/Header"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(28, 28)
+layout_mode = 2
+focus_mode = 2
+mouse_default_cursor_shape = 2
+text = "×"
+
+[node name="Space1" type="Control" parent="Center/Panel/Body"]
+custom_minimum_size = Vector2(0, 16)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Rule1" type="ColorRect" parent="Center/Panel/Body"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 1)
+mouse_filter = 2
+color = Color(0.102, 0.141, 0.161, 0.75)
+
+[node name="Space2" type="Control" parent="Center/Panel/Body"]
+custom_minimum_size = Vector2(0, 18)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Intro" type="Label" parent="Center/Panel/Body"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+autowrap_mode = 3
+text = "聚焦空间干涉、协议逻辑与性能平衡的硬件装配模拟。"
+
+[node name="Space3" type="Control" parent="Center/Panel/Body"]
+custom_minimum_size = Vector2(0, 18)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Rule2" type="ColorRect" parent="Center/Panel/Body"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 1)
+mouse_filter = 2
+color = Color(0.102, 0.141, 0.161, 0.55)
+
+[node name="Space4" type="Control" parent="Center/Panel/Body"]
+custom_minimum_size = Vector2(0, 14)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="InfoGrid" type="GridContainer" parent="Center/Panel/Body"]
+unique_name_in_owner = true
+layout_mode = 2
+columns = 2
+theme_override_constants/h_separation = 18
+theme_override_constants/v_separation = 4
+
+[node name="EngineKey" type="Label" parent="Center/Panel/Body/InfoGrid"]
+layout_mode = 2
+mouse_filter = 2
+text = "ENGINE"
+
+[node name="EngineValue" type="Label" parent="Center/Panel/Body/InfoGrid"]
+layout_mode = 2
+mouse_filter = 2
+text = "Godot 4.7 · C#"
+
+[node name="RulesKey" type="Label" parent="Center/Panel/Body/InfoGrid"]
+layout_mode = 2
+mouse_filter = 2
+text = "RULES"
+
+[node name="RulesValue" type="Label" parent="Center/Panel/Body/InfoGrid"]
+layout_mode = 2
+mouse_filter = 2
+text = "TypeScript 规则引擎"
+
+[node name="DataKey" type="Label" parent="Center/Panel/Body/InfoGrid"]
+layout_mode = 2
+mouse_filter = 2
+text = "DATA"
+
+[node name="DataValue" type="Label" parent="Center/Panel/Body/InfoGrid"]
+layout_mode = 2
+mouse_filter = 2
+text = "JSON 硬件参数库"
+
+[node name="BuildKey" type="Label" parent="Center/Panel/Body/InfoGrid"]
+layout_mode = 2
+mouse_filter = 2
+text = "BUILD"
+
+[node name="BuildValue" type="Label" parent="Center/Panel/Body/InfoGrid"]
+layout_mode = 2
+mouse_filter = 2
+text = "0.1.0 · INTERNAL PREVIEW"
+
+[node name="Space5" type="Control" parent="Center/Panel/Body"]
+custom_minimum_size = Vector2(0, 14)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Rule3" type="ColorRect" parent="Center/Panel/Body"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 1)
+mouse_filter = 2
+color = Color(0.102, 0.141, 0.161, 0.55)
+
+[node name="Space6" type="Control" parent="Center/Panel/Body"]
+custom_minimum_size = Vector2(0, 12)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Footer" type="Label" parent="Center/Panel/Body"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+text = "© 2026 PC ARCHITECT"
+
+[node name="Space7" type="Control" parent="Center/Panel/Body"]
+custom_minimum_size = Vector2(0, 18)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="FooterHint" type="Label" parent="Center/Panel/Body"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+text = "ESC  关闭"

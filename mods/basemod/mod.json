@@ -1,0 +1,11 @@
+{
+  "modId": "basemod",
+  "displayName": "PC Architect 基础内容",
+  "version": "1.0.0",
+  "loadOrder": 1000,
+  "dependencies": {
+    "required": [],
+    "optional": []
+  },
+  "contentRoot": "content"
+}

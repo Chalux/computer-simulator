@@ -1,0 +1,14 @@
+{
+  "order": 2,
+  "name": "烈士墙 Max 700",
+  "continuous": 520,
+  "pulse": 620,
+  "recommended": 570,
+  "length": 165,
+  "width": 150,
+  "height": 86,
+  "price": 199,
+  "cable": "非模组",
+  "noiseDb": 34,
+  "asset": "assets/models/power_supplies/max700.glb"
+}

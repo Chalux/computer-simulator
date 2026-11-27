@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { benchmark, rating, reportScores, thermalState } from '../../../Resource/agents/default-agent/builtins/benchmark.mjs';
+import { loadBasemodCatalog } from './fixtures/basemod.mjs';
 
-const bench = JSON.parse(readFileSync(new URL('../../../Resource/hardware/clearance-bench.json', import.meta.url),'utf8'));
+const bench = loadBasemodCatalog();
 const setup = { ...bench.initial, front360: true, caseIndex: 1 };
 const run = (changes = {}, psu = 0) => benchmark(bench, { ...setup, ...changes }, psu);
 

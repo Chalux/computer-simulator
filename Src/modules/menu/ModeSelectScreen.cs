@@ -1,91 +1,39 @@
 using Godot;
+using KemoCard.Frame.UI.Base;
 
 namespace ComputerSimulator.Modules.Menu;
 
 /// <summary>
-/// 模式选择：主菜单“开始装配”后的第一跳。六个入口来自同一份目录数据，
-/// 沙盒与神秘箱进入工作台，故障诊断进入专用案例，其余三个交给模式简报页。
+/// 模式选择页：静态骨架在 <c>mode_select.tscn</c>，模式条目按目录数据生成。
+/// 组合根接管模式路由与返回。
 /// </summary>
-public partial class ModeSelectScreen : Control
+public partial class ModeSelectScreen : BaseWin
 {
     public event Action<GameMode>? ModeSelected;
     public event Action? BackRequested;
 
-    /// <summary>返回本页时优先聚焦的模式；为空时聚焦第一个入口。</summary>
-    public GameMode? InitialFocus { get; set; }
-
     private readonly List<(GameMode Mode, TechMenuItem Item)> _items = [];
-    private readonly GridContainer _grid = new();
+    private MenuController _controller = null!;
+    private GridContainer _grid = null!;
     private Control _left = null!;
     private Control _footer = null!;
     private TechShowcase _showcase = null!;
     private TechLine _rule = null!;
 
-    public override void _Ready()
+    public override string UIId => UiRoutes.ModeSelect;
+    public override string UIDir => UiRoutes.MenuDir;
+
+    protected override void OnCreate()
     {
         SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         Theme = MenuPalette.CreateTheme();
         MouseFilter = MouseFilterEnum.Stop;
 
-        Build();
-        PlayIntro();
-    }
-
-    #region 布局
-
-    private void Build()
-    {
-        var backdrop = new TechBackdrop();
-        AddChild(backdrop);
-        backdrop.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-
-        var margin = new MarginContainer { MouseFilter = MouseFilterEnum.Ignore };
-        margin.AddThemeConstantOverride("margin_left", 72);
-        margin.AddThemeConstantOverride("margin_right", 72);
-        margin.AddThemeConstantOverride("margin_top", 60);
-        margin.AddThemeConstantOverride("margin_bottom", 34);
-        AddChild(margin);
-        margin.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-
-        var page = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
-        page.AddThemeConstantOverride("separation", 0);
-        margin.AddChild(page);
-
-        var content = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
-        content.AddThemeConstantOverride("separation", 24);
-        page.AddChild(content);
-
-        _left = BuildLeftColumn();
-        content.AddChild(_left);
-
-        content.AddChild(new ColorRect
-        {
-            Color = MenuPalette.Alpha(MenuPalette.Steel, 0.45f),
-            CustomMinimumSize = new Vector2(1, 0),
-            SizeFlagsVertical = SizeFlags.ExpandFill,
-            MouseFilter = MouseFilterEnum.Ignore,
-        });
-
-        _showcase = new TechShowcase
-        {
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            SizeFlagsVertical = SizeFlags.ExpandFill,
-        };
-        content.AddChild(_showcase);
-
-        _footer = BuildFooter();
-        page.AddChild(_footer);
-    }
-
-    private Control BuildLeftColumn()
-    {
-        var column = new VBoxContainer
-        {
-            CustomMinimumSize = new Vector2(540, 0),
-            SizeFlagsVertical = SizeFlags.ExpandFill,
-            SizeFlagsHorizontal = SizeFlags.Fill,
-        };
-        column.AddThemeConstantOverride("separation", 0);
+        _controller = Facade<MenuController>();
+        _left = GetNode<Control>("%Left");
+        _footer = GetNode<Control>("%Footer");
+        _showcase = GetNode<TechShowcase>("%Showcase");
+        _grid = GetNode<GridContainer>("%Grid");
 
         var title = new TechTitle
         {
@@ -96,9 +44,7 @@ public partial class ModeSelectScreen : Control
             Prefix = MenuPalette.Ash,
             Tint = MenuPalette.Platinum,
         };
-        column.AddChild(title);
-
-        column.AddChild(VSpace(8));
+        GetNode<VBoxContainer>("%TitleHost").AddChild(title);
 
         _rule = new TechLine
         {
@@ -109,21 +55,58 @@ public partial class ModeSelectScreen : Control
             SizeFlagsHorizontal = SizeFlags.Fill,
             PivotOffset = Vector2.Zero,
         };
-        column.AddChild(_rule);
+        GetNode<VBoxContainer>("%RuleHost").AddChild(_rule);
 
-        column.AddChild(VSpace(12));
-        column.AddChild(Text("选 择 模 式", 16, MenuPalette.Alpha(MenuPalette.Ash, 0.78f)));
-        column.AddChild(VSpace(24));
-        column.AddChild(new TechLine { CustomMinimumSize = new Vector2(0, 1), Strength = 0.75f });
+        GetNode<VBoxContainer>("%MenuRuleHost").AddChild(new TechLine
+        {
+            CustomMinimumSize = new Vector2(0, 1),
+            Strength = 0.75f,
+        });
 
+        Label subtitle = GetNode<Label>("%Subtitle");
+        subtitle.AddThemeFontOverride("font", MenuPalette.Text);
+        subtitle.AddThemeFontSizeOverride("font_size", 16);
+        subtitle.AddThemeColorOverride("font_color", MenuPalette.Alpha(MenuPalette.Ash, 0.78f));
+
+        StyleTextButton(GetNode<Button>("%BackButton"));
+        BuildItems();
+    }
+
+    protected override void InitEvent()
+    {
+        foreach ((GameMode mode, TechMenuItem item) in _items)
+        {
+            GameMode captured = mode;
+            OnClicks(item, () => Choose(captured));
+        }
+
+        OnClicks(GetNode<Button>("%BackButton"), RequestBack);
+    }
+
+    protected override void OnOpen()
+    {
+        PlayIntro();
+    }
+
+    protected override void UpdateView()
+    {
+    }
+
+    protected override void OnLayerVisibleUpdate()
+    {
+        if (!Visible) return;
+        if (GetViewport().GuiGetFocusOwner() != null) return;
+        GrabInitialFocus();
+    }
+
+    private void BuildItems()
+    {
         _grid.Columns = 2;
         _grid.AddThemeConstantOverride("h_separation", 24);
         _grid.AddThemeConstantOverride("v_separation", 0);
-        column.AddChild(_grid);
 
-        foreach (GameModeInfo info in GameModeCatalog.All)
+        foreach (GameModeInfo info in _controller.Modes)
         {
-            GameMode mode = info.Mode;
             var item = new TechMenuItem
             {
                 Index = info.Index,
@@ -132,41 +115,13 @@ public partial class ModeSelectScreen : Control
                 SizeFlagsHorizontal = SizeFlags.ExpandFill,
             };
             _grid.AddChild(item);
-            item.Pressed += () => Choose(mode);
-            _items.Add((mode, item));
+            _items.Add((info.Mode, item));
         }
-
-        column.AddChild(new Control { SizeFlagsVertical = SizeFlags.ExpandFill });
-        return column;
     }
 
-    private Control BuildFooter()
-    {
-        var footer = new VBoxContainer();
-        footer.AddThemeConstantOverride("separation", 10);
-        footer.AddChild(new TechLine { CustomMinimumSize = new Vector2(0, 1), Strength = 0.55f });
+    private void Choose(GameMode mode) => ModeSelected?.Invoke(mode);
 
-        var row = new HBoxContainer { CustomMinimumSize = new Vector2(0, 24) };
-        row.AddThemeConstantOverride("separation", 12);
-        row.AddChild(Expand());
-        row.AddChild(TextButton("返回主菜单   ESC", RequestBack));
-        footer.AddChild(row);
-        return footer;
-    }
-
-    #endregion
-
-    #region 行为
-
-    private void Choose(GameMode mode)
-    {
-        ModeSelected?.Invoke(mode);
-    }
-
-    private void RequestBack()
-    {
-        BackRequested?.Invoke();
-    }
+    private void RequestBack() => BackRequested?.Invoke();
 
     private void GrabInitialFocus()
     {
@@ -174,7 +129,7 @@ public partial class ModeSelectScreen : Control
         if (GetViewport().GuiGetFocusOwner() != null) return;
 
         TechMenuItem? target = null;
-        if (InitialFocus is { } wanted)
+        if (_controller.LastSelectedMode is { } wanted)
         {
             foreach (var entry in _items)
             {
@@ -187,10 +142,6 @@ public partial class ModeSelectScreen : Control
         target ??= _items.Count > 0 ? _items[0].Item : null;
         target?.GrabFocus();
     }
-
-    #endregion
-
-    #region 动效
 
     private void PlayIntro()
     {
@@ -223,36 +174,16 @@ public partial class ModeSelectScreen : Control
         footer.TweenInterval(0.50);
         footer.TweenProperty(_footer, "modulate:a", 1f, 0.38).SetEase(Tween.EaseType.Out);
 
-        // 等黑场完全退去后再抓焦点，避免转场动画期间误触造成重复跳转。
         Tween focus = CreateTween();
         focus.TweenInterval(0.42);
         focus.TweenCallback(Callable.From(GrabInitialFocus));
     }
 
-    #endregion
-
-    #region 小工具
-
-    private static Label Text(string text, int size, Color color)
+    private static void StyleTextButton(Button button)
     {
-        var label = new Label { Text = text, MouseFilter = MouseFilterEnum.Ignore };
-        label.AddThemeFontOverride("font", MenuPalette.Text);
-        label.AddThemeFontSizeOverride("font_size", size);
-        label.AddThemeColorOverride("font_color", color);
-        return label;
-    }
-
-    private static Button TextButton(string text, Action pressed)
-    {
-        var button = new Button
-        {
-            Text = text,
-            Flat = true,
-            FocusMode = FocusModeEnum.All,
-            MouseDefaultCursorShape = CursorShape.PointingHand,
-            CustomMinimumSize = new Vector2(0, 24),
-            SizeFlagsVertical = SizeFlags.ShrinkCenter,
-        };
+        button.Flat = true;
+        button.FocusMode = FocusModeEnum.All;
+        button.MouseDefaultCursorShape = CursorShape.PointingHand;
         button.AddThemeFontOverride("font", MenuPalette.Text);
         button.AddThemeFontSizeOverride("font_size", 11);
         button.AddThemeColorOverride("font_color", MenuPalette.Alpha(MenuPalette.Ash, 0.65f));
@@ -268,28 +199,7 @@ public partial class ModeSelectScreen : Control
             BgColor = Colors.Transparent,
             BorderColor = MenuPalette.Alpha(MenuPalette.Signal, 0.55f),
             BorderWidthBottom = 1,
-            ContentMarginLeft = 0,
-            ContentMarginRight = 0,
-            ContentMarginTop = 0,
-            ContentMarginBottom = 0,
         };
         button.AddThemeStyleboxOverride("focus", focus);
-
-        button.Pressed += pressed;
-        return button;
     }
-
-    private static Control Expand() => new Control
-    {
-        SizeFlagsHorizontal = SizeFlags.ExpandFill,
-        MouseFilter = MouseFilterEnum.Ignore,
-    };
-
-    private static Control VSpace(float height) => new Control
-    {
-        CustomMinimumSize = new Vector2(0, height),
-        MouseFilter = MouseFilterEnum.Ignore,
-    };
-
-    #endregion
 }

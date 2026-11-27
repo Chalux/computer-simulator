@@ -18,7 +18,7 @@ public partial class SectionDrawing : Control
         var board = _result.Parts.First(p => p.Role == "board");
         if (_result.GpuLimit is int limit) { DrawGraphicsSection(_result, limit); return; }
         Font labelFont = GetThemeDefaultFont();
-        var ramParts = _result.Parts.Where(p => p.Role == "ram").OrderBy(p => p.Center.X).ToList();
+        var ramParts = _result.Parts.Where(p => p.Role == "ram").OrderBy(p => p.Origin[0] + p.Size[0] / 2).ToList();
         float[] labelWidths = ramParts
             .Select(p => labelFont.GetStringSize(p.Id, HorizontalAlignment.Left, -1, RamLabelSize).X)
             .ToArray();
@@ -32,12 +32,12 @@ public partial class SectionDrawing : Control
         float ledgerRowHeight = labelFont.GetHeight(RamLabelSize) + 2f;
         float labelAscent = labelFont.GetAscent(RamLabelSize);
         float bottomPad = ramRows >= 2 ? 12f + ledgerRowHeight + labelAscent : 21f;
-        float scale = Mathf.Min((Size.X - 32) / board.Extent.X,
+        float scale = Mathf.Min((Size.X - 32) / board.Size[0],
             Mathf.Max(Size.Y - 17 - bottomPad, 24) / (_result.HeightLimit + 18));
-        var start = new Vector2((Size.X - board.Extent.X * scale) / 2, Size.Y - bottomPad);
+        var start = new Vector2((Size.X - board.Size[0] * scale) / 2, Size.Y - bottomPad);
         Vector2 Project(float x, float y) => start + new Vector2(x, -y) * scale;
-        Rect2 Rect(Volume p) => new(Project(p.Corner.X, p.Corner.Y + p.Extent.Y),
-            new Vector2(p.Extent.X, p.Extent.Y) * scale);
+        Rect2 Rect(Volume p) => new(Project(p.Origin[0], p.Origin[1] + p.Size[1]),
+            new Vector2(p.Size[0], p.Size[1]) * scale);
         var warn = _result.Issues.SelectMany(issue => issue.Parts).ToHashSet();
         var ramAnchors = new List<(string Id, Vector2 Anchor)>();
         foreach (var p in _result.Parts)
@@ -65,8 +65,8 @@ public partial class SectionDrawing : Control
             var contact = Rect(overlap);
             var ink = new Color("#ff958b");
             DrawRect(contact, ink);
-            float excess = issue.Excess ?? overlap.Extent.Y;
-            var labelAt = new Vector2(start.X + board.Extent.X * scale + 14, 50 + 19 * callout++);
+            float excess = issue.Excess ?? overlap.Size[1];
+            var labelAt = new Vector2(start.X + board.Size[0] * scale + 14, 50 + 19 * callout++);
             if (labelAt.X + 60 >= Size.X) continue;
             DrawLine(contact.GetCenter(), labelAt - new Vector2(2, 5), ink, 1, true);
             DrawString(GetThemeDefaultFont(), labelAt, $"+{excess:0.#} mm", fontSize: 13, modulate: ink);
@@ -104,11 +104,12 @@ public partial class SectionDrawing : Control
     {
         var gpu = result.Parts.First(p => p.Role == "gpu");
         var radiator = result.Parts.First(p => p.Role == "radiator");
-        float length = radiator.Corner.X + radiator.Extent.X;
-        float scale = Mathf.Min((Size.X - 44) / length, (Size.Y - 45) / Mathf.Max(gpu.Center.Y + gpu.Extent.Y / 2, radiator.Corner.Y + radiator.Extent.Y));
+        float length = radiator.Origin[0] + radiator.Size[0];
+        float height = Mathf.Max(gpu.Origin[1] + gpu.Size[1], radiator.Origin[1] + radiator.Size[1]);
+        float scale = Mathf.Min((Size.X - 44) / length, (Size.Y - 45) / height);
         var origin = new Vector2((Size.X - length * scale) / 2, Size.Y - 24);
-        Rect2 Project(Volume v) => new(origin + new Vector2(v.Corner.X, -v.Corner.Y - v.Extent.Y) * scale,
-            new Vector2(v.Extent.X, v.Extent.Y) * scale);
+        Rect2 Project(Volume v) => new(origin + new Vector2(v.Origin[0], -v.Origin[1] - v.Size[1]) * scale,
+            new Vector2(v.Size[0], v.Size[1]) * scale);
         var green = new Color("#82cbb7");
         var amber = new Color("#f1c98c");
         var red = new Color("#ff8b82");
@@ -116,7 +117,7 @@ public partial class SectionDrawing : Control
         var cooler = Project(radiator);
         DrawRect(card, new Color(green, .22f)); DrawRect(card, green, false, 1);
         DrawRect(cooler, new Color(amber, .22f)); DrawRect(cooler, amber, false, 1);
-        DrawString(GetThemeDefaultFont(), card.Position + new Vector2(6, 18), $"显卡  {gpu.Extent.X} mm", fontSize: 14, modulate: green);
+        DrawString(GetThemeDefaultFont(), card.Position + new Vector2(6, 18), $"显卡  {gpu.Size[0]} mm", fontSize: 14, modulate: green);
         foreach (var issue in result.Issues)
             if (issue.Overlap is { } overlap)
             {
@@ -126,6 +127,6 @@ public partial class SectionDrawing : Control
             }
         float x = origin.X + limit * scale;
         DrawDashedLine(new Vector2(x, 18), new Vector2(x, Size.Y - 17), amber, 1, 4);
-        DrawString(GetThemeDefaultFont(), new Vector2(origin.X, Size.Y - 4), $"有效限长  {limit} mm  /  冷排总厚  {radiator.Extent.X} mm", fontSize: 13, modulate: amber);
+        DrawString(GetThemeDefaultFont(), new Vector2(origin.X, Size.Y - 4), $"有效限长  {limit} mm  /  冷排总厚  {radiator.Size[0]} mm", fontSize: 13, modulate: amber);
     }
 }

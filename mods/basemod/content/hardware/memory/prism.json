@@ -1,0 +1,12 @@
+{
+  "order": 0,
+  "name": "棱镜高马甲",
+  "dimensions": [133, 7, 48],
+  "price": 259,
+  "color": "黑",
+  "lighting": "ARGB",
+  "rgb": true,
+  "gb": 16,
+  "rate": 5600,
+  "asset": "assets/models/memory/prism.glb"
+}

@@ -1,0 +1,9 @@
+{
+  "order": 4,
+  "mode": "EraScenario",
+  "index": "05",
+  "title": "时代剧本",
+  "code": "ERA SCENARIO",
+  "summary": "回到指定年代，用当年的配件与预算，还原一台符合时代气质的机器。",
+  "available": false
+}

@@ -1,4 +1,5 @@
 using KemoCard.Frame.Content.Definitions;
+using KemoCard.Frame.Content.Simulator;
 
 namespace KemoCard.Frame.Content;
 
@@ -19,6 +20,20 @@ public sealed class GameDefinitionStore
     private readonly Dictionary<string, SkillActionDto> _skillActions = new(StringComparer.Ordinal);
     private readonly Dictionary<string, StoryDto> _stories = new(StringComparer.Ordinal);
     private readonly Dictionary<string, OrbTypeDto> _orbTypes = new(StringComparer.Ordinal);
+
+    private readonly Dictionary<string, HardwareCaseDto> _cases = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, HardwareMotherboardDto> _motherboards = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, HardwareProcessorDto> _processors = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, HardwareGraphicsCardDto> _graphicsCards = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, HardwareMemoryDto> _memoryModules = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, HardwareStorageDto> _storageDevices = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, HardwareCoolerDto> _coolers = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, HardwarePowerSupplyDto> _powerSupplies = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, CommissionDefinitionDto> _commissions = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, DiagnosisCaseDefinitionDto> _diagnosisCases = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, BenchmarkDefinitionDto> _benchmarks = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, GameModeDefinitionDto> _gameModes = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, ChallengeDefinitionDto> _challenges = new(StringComparer.Ordinal);
 
     public bool TryGetCharacter(string id, out CharacterDto dto) => _characters.TryGetValue(id, out dto!);
 
@@ -50,6 +65,32 @@ public sealed class GameDefinitionStore
 
     public bool TryGetOrbType(string id, out OrbTypeDto dto) => _orbTypes.TryGetValue(id, out dto!);
 
+    public bool TryGetCase(string id, out HardwareCaseDto dto) => _cases.TryGetValue(id, out dto!);
+
+    public bool TryGetMotherboard(string id, out HardwareMotherboardDto dto) => _motherboards.TryGetValue(id, out dto!);
+
+    public bool TryGetProcessor(string id, out HardwareProcessorDto dto) => _processors.TryGetValue(id, out dto!);
+
+    public bool TryGetGraphicsCard(string id, out HardwareGraphicsCardDto dto) => _graphicsCards.TryGetValue(id, out dto!);
+
+    public bool TryGetMemoryModule(string id, out HardwareMemoryDto dto) => _memoryModules.TryGetValue(id, out dto!);
+
+    public bool TryGetStorage(string id, out HardwareStorageDto dto) => _storageDevices.TryGetValue(id, out dto!);
+
+    public bool TryGetCooler(string id, out HardwareCoolerDto dto) => _coolers.TryGetValue(id, out dto!);
+
+    public bool TryGetPowerSupply(string id, out HardwarePowerSupplyDto dto) => _powerSupplies.TryGetValue(id, out dto!);
+
+    public bool TryGetCommission(string id, out CommissionDefinitionDto dto) => _commissions.TryGetValue(id, out dto!);
+
+    public bool TryGetDiagnosisCase(string id, out DiagnosisCaseDefinitionDto dto) => _diagnosisCases.TryGetValue(id, out dto!);
+
+    public bool TryGetBenchmark(string id, out BenchmarkDefinitionDto dto) => _benchmarks.TryGetValue(id, out dto!);
+
+    public bool TryGetGameMode(string id, out GameModeDefinitionDto dto) => _gameModes.TryGetValue(id, out dto!);
+
+    public bool TryGetChallenge(string id, out ChallengeDefinitionDto dto) => _challenges.TryGetValue(id, out dto!);
+
     public IReadOnlyDictionary<string, CharacterDto> Characters => _characters;
 
     public IReadOnlyDictionary<string, EnemyDto> Enemies => _enemies;
@@ -80,6 +121,32 @@ public sealed class GameDefinitionStore
 
     public IReadOnlyDictionary<string, OrbTypeDto> OrbTypes => _orbTypes;
 
+    public IReadOnlyDictionary<string, HardwareCaseDto> Cases => _cases;
+
+    public IReadOnlyDictionary<string, HardwareMotherboardDto> Motherboards => _motherboards;
+
+    public IReadOnlyDictionary<string, HardwareProcessorDto> Processors => _processors;
+
+    public IReadOnlyDictionary<string, HardwareGraphicsCardDto> GraphicsCards => _graphicsCards;
+
+    public IReadOnlyDictionary<string, HardwareMemoryDto> MemoryModules => _memoryModules;
+
+    public IReadOnlyDictionary<string, HardwareStorageDto> StorageDevices => _storageDevices;
+
+    public IReadOnlyDictionary<string, HardwareCoolerDto> Coolers => _coolers;
+
+    public IReadOnlyDictionary<string, HardwarePowerSupplyDto> PowerSupplies => _powerSupplies;
+
+    public IReadOnlyDictionary<string, CommissionDefinitionDto> Commissions => _commissions;
+
+    public IReadOnlyDictionary<string, DiagnosisCaseDefinitionDto> DiagnosisCases => _diagnosisCases;
+
+    public IReadOnlyDictionary<string, BenchmarkDefinitionDto> Benchmarks => _benchmarks;
+
+    public IReadOnlyDictionary<string, GameModeDefinitionDto> GameModes => _gameModes;
+
+    public IReadOnlyDictionary<string, ChallengeDefinitionDto> Challenges => _challenges;
+
     public bool Contains(EContentCategory category, string id) => category switch
     {
         EContentCategory.Character => _characters.ContainsKey(id),
@@ -97,6 +164,19 @@ public sealed class GameDefinitionStore
         EContentCategory.SkillAction => _skillActions.ContainsKey(id),
         EContentCategory.Story => _stories.ContainsKey(id),
         EContentCategory.OrbType => _orbTypes.ContainsKey(id),
+        EContentCategory.SimCase => _cases.ContainsKey(id),
+        EContentCategory.SimMotherboard => _motherboards.ContainsKey(id),
+        EContentCategory.SimProcessor => _processors.ContainsKey(id),
+        EContentCategory.SimGraphicsCard => _graphicsCards.ContainsKey(id),
+        EContentCategory.SimMemory => _memoryModules.ContainsKey(id),
+        EContentCategory.SimStorage => _storageDevices.ContainsKey(id),
+        EContentCategory.SimCooler => _coolers.ContainsKey(id),
+        EContentCategory.SimPowerSupply => _powerSupplies.ContainsKey(id),
+        EContentCategory.SimCommission => _commissions.ContainsKey(id),
+        EContentCategory.SimDiagnosisCase => _diagnosisCases.ContainsKey(id),
+        EContentCategory.SimBenchmark => _benchmarks.ContainsKey(id),
+        EContentCategory.SimGameMode => _gameModes.ContainsKey(id),
+        EContentCategory.SimChallenge => _challenges.ContainsKey(id),
         _ => false,
     };
 
@@ -117,6 +197,19 @@ public sealed class GameDefinitionStore
         _skillActions.Clear();
         _stories.Clear();
         _orbTypes.Clear();
+        _cases.Clear();
+        _motherboards.Clear();
+        _processors.Clear();
+        _graphicsCards.Clear();
+        _memoryModules.Clear();
+        _storageDevices.Clear();
+        _coolers.Clear();
+        _powerSupplies.Clear();
+        _commissions.Clear();
+        _diagnosisCases.Clear();
+        _benchmarks.Clear();
+        _gameModes.Clear();
+        _challenges.Clear();
     }
 
     internal void Remove(EContentCategory category, string id)
@@ -168,6 +261,45 @@ public sealed class GameDefinitionStore
             case EContentCategory.OrbType:
                 _orbTypes.Remove(id);
                 break;
+            case EContentCategory.SimCase:
+                _cases.Remove(id);
+                break;
+            case EContentCategory.SimMotherboard:
+                _motherboards.Remove(id);
+                break;
+            case EContentCategory.SimProcessor:
+                _processors.Remove(id);
+                break;
+            case EContentCategory.SimGraphicsCard:
+                _graphicsCards.Remove(id);
+                break;
+            case EContentCategory.SimMemory:
+                _memoryModules.Remove(id);
+                break;
+            case EContentCategory.SimStorage:
+                _storageDevices.Remove(id);
+                break;
+            case EContentCategory.SimCooler:
+                _coolers.Remove(id);
+                break;
+            case EContentCategory.SimPowerSupply:
+                _powerSupplies.Remove(id);
+                break;
+            case EContentCategory.SimCommission:
+                _commissions.Remove(id);
+                break;
+            case EContentCategory.SimDiagnosisCase:
+                _diagnosisCases.Remove(id);
+                break;
+            case EContentCategory.SimBenchmark:
+                _benchmarks.Remove(id);
+                break;
+            case EContentCategory.SimGameMode:
+                _gameModes.Remove(id);
+                break;
+            case EContentCategory.SimChallenge:
+                _challenges.Remove(id);
+                break;
         }
     }
 
@@ -200,4 +332,30 @@ public sealed class GameDefinitionStore
     internal Dictionary<string, StoryDto> StoriesMutable => _stories;
 
     internal Dictionary<string, OrbTypeDto> OrbTypesMutable => _orbTypes;
+
+    internal Dictionary<string, HardwareCaseDto> CasesMutable => _cases;
+
+    internal Dictionary<string, HardwareMotherboardDto> MotherboardsMutable => _motherboards;
+
+    internal Dictionary<string, HardwareProcessorDto> ProcessorsMutable => _processors;
+
+    internal Dictionary<string, HardwareGraphicsCardDto> GraphicsCardsMutable => _graphicsCards;
+
+    internal Dictionary<string, HardwareMemoryDto> MemoryModulesMutable => _memoryModules;
+
+    internal Dictionary<string, HardwareStorageDto> StorageDevicesMutable => _storageDevices;
+
+    internal Dictionary<string, HardwareCoolerDto> CoolersMutable => _coolers;
+
+    internal Dictionary<string, HardwarePowerSupplyDto> PowerSuppliesMutable => _powerSupplies;
+
+    internal Dictionary<string, CommissionDefinitionDto> CommissionsMutable => _commissions;
+
+    internal Dictionary<string, DiagnosisCaseDefinitionDto> DiagnosisCasesMutable => _diagnosisCases;
+
+    internal Dictionary<string, BenchmarkDefinitionDto> BenchmarksMutable => _benchmarks;
+
+    internal Dictionary<string, GameModeDefinitionDto> GameModesMutable => _gameModes;
+
+    internal Dictionary<string, ChallengeDefinitionDto> ChallengesMutable => _challenges;
 }

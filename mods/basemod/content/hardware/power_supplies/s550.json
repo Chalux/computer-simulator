@@ -1,0 +1,14 @@
+{
+  "order": 1,
+  "name": "素装 S550",
+  "continuous": 550,
+  "pulse": 710,
+  "recommended": 615,
+  "length": 150,
+  "width": 150,
+  "height": 86,
+  "price": 349,
+  "cable": "半模组",
+  "noiseDb": 31,
+  "asset": "assets/models/power_supplies/s550.glb"
+}

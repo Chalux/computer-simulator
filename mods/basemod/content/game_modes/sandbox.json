@@ -1,0 +1,9 @@
+{
+  "order": 5,
+  "mode": "Sandbox",
+  "index": "06",
+  "title": "沙盒模式",
+  "code": "SANDBOX",
+  "summary": "自由装配、诊断与整机负载测试，不受委托与预算限制。",
+  "available": true
+}

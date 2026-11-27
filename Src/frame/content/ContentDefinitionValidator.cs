@@ -1,5 +1,6 @@
 using System.Text.Json;
 using KemoCard.Frame.Content.Definitions;
+using KemoCard.Frame.Content.Simulator;
 using KemoCard.Frame.Condition;
 using KemoCard.Frame.Gas;
 using KemoCard.Frame.Gas.Executions;
@@ -46,7 +47,441 @@ public sealed class ContentDefinitionValidator
         ValidateGameplayEffects(store, errors);
         ValidateStories(store, errors);
         ValidateOrbTypes(store, errors);
+        ValidateSimulatorContent(store, errors);
         return errors;
+    }
+
+    /// <summary>
+    /// 装机模拟器内容准入：只拦会让目录/订单在运行期静默失效或直接抛错的配置
+    /// （空名称、悬空硬件 id、非正参考价、空数组、越界槽位、神秘箱清单与提交工况不一致），
+    /// 不替代规则脚本自身的校验。所有数组都可能被 JSON 的 <c>null</c> 显式覆盖，
+    /// 因此这里必须按运行期实际解引用方式做空值检查，而不是相信 DTO 初始化器。
+    /// </summary>
+    private static void ValidateSimulatorContent(
+        GameDefinitionStore store,
+        List<ContentDefinitionValidationError> errors)
+    {
+        var board = FirstOrderedMotherboard(store);
+        int slotCount = board?.Slots?.Length ?? 0;
+        var benchmark = FirstBenchmark(store);
+
+        foreach (var item in store.Cases.Values)
+        {
+            if (string.IsNullOrWhiteSpace(item.Name) || item.Price <= 0 || item.HeightLimit <= 0 ||
+                item.NaturalAirflow < 0)
+                errors.Add(new(EContentCategory.SimCase, item.Id, "case requires a name, positive price/heightLimit and non-negative naturalAirflow."));
+        }
+
+        foreach (var item in store.Motherboards.Values)
+        {
+            if (string.IsNullOrWhiteSpace(item.Name) || item.Price <= 0 ||
+                item.Dimensions is not { Length: 3 } || item.Slots is not { Length: > 0 } ||
+                item.Slots.Any(static slot => slot?.Anchor is not { Length: 3 }) ||
+                item.MaxRate <= 0 || item.VrmWatts <= 0)
+                errors.Add(new(EContentCategory.SimMotherboard, item.Id, "motherboard requires a name, positive price, dimensions, maxRate and vrmWatts, and at least one anchored slot."));
+        }
+
+        foreach (var item in store.Processors.Values)
+        {
+            if (string.IsNullOrWhiteSpace(item.Name) || item.Price <= 0 || item.Performance <= 0)
+                errors.Add(new(EContentCategory.SimProcessor, item.Id, "processor requires a name, positive price and performance."));
+        }
+
+        foreach (var item in store.GraphicsCards.Values)
+        {
+            if (string.IsNullOrWhiteSpace(item.Name) || item.Price <= 0 || item.Performance <= 0 ||
+                item.Dimensions is not { Length: 3 } || item.TestWatts is not { Length: > 0 })
+                errors.Add(new(EContentCategory.SimGraphicsCard, item.Id, "graphics card requires a name, positive price/performance, dimensions and testWatts."));
+        }
+
+        foreach (var item in store.MemoryModules.Values)
+        {
+            if (string.IsNullOrWhiteSpace(item.Name) || item.Price <= 0 ||
+                item.Dimensions is not { Length: 3 } || item.Gb <= 0 || item.Rate <= 0)
+                errors.Add(new(EContentCategory.SimMemory, item.Id, "memory requires a name, positive price/dimensions/gb/rate."));
+        }
+
+        foreach (var item in store.StorageDevices.Values)
+        {
+            if (string.IsNullOrWhiteSpace(item.Name) || item.Price <= 0)
+                errors.Add(new(EContentCategory.SimStorage, item.Id, "storage requires a name and positive price."));
+        }
+
+        foreach (var item in store.Coolers.Values)
+        {
+            bool liquid = string.Equals(item.Kind, "liquid", StringComparison.OrdinalIgnoreCase);
+            // 风冷参考价不进入 benchmark 账单（旧目录也没有该字段），允许为 0；
+            // 水冷价会被六维评分直接读取，必须为正。
+            if (string.IsNullOrWhiteSpace(item.Name) || item.Price < 0 ||
+                (liquid && item.Price == 0) ||
+                (!liquid && (item.BodyAabb is not { Length: > 0 } ||
+                    !item.BodyAabb.All(ValidVolume) || !ValidVolume(item.FanAabb))))
+                errors.Add(new(EContentCategory.SimCooler, item.Id, "cooler requires a name, non-negative price (positive for liquid) and complete body_aabb and fan_aabb for air coolers."));
+        }
+
+        // 只有声明了 benchmark 的内容才由评分规则读取水冷；纯卡牌注册表不需要水冷定义。
+        var liquidCooler = store.Coolers.Values.FirstOrDefault(c =>
+            string.Equals(c.Kind, "liquid", StringComparison.OrdinalIgnoreCase));
+        if (store.Benchmarks.Count > 0 && liquidCooler is null)
+            errors.Add(new(EContentCategory.SimCooler, "*", "at least one liquid cooler is required by the benchmark rules."));
+
+        foreach (var item in store.PowerSupplies.Values)
+        {
+            if (string.IsNullOrWhiteSpace(item.Name) || item.Price <= 0 || item.Continuous <= 0 || item.Pulse < item.Continuous)
+                errors.Add(new(EContentCategory.SimPowerSupply, item.Id, "power supply requires a name, positive price and pulse >= continuous."));
+        }
+
+        foreach (var item in store.Benchmarks.Values)
+        {
+            if (item.Airflows is not { Length: > 0 } ||
+                item.Workloads is not { Length: > 0 } ||
+                item.LoadCurve is not { Length: > 0 } ||
+                item.Airflows.Any(static airflow => airflow is null || airflow.Intake < 0 || airflow.Exhaust < 0) ||
+                item.Workloads.Any(static workload => workload is null || !IsValidWorkload(workload)) ||
+                item.LoadCurve.Any(static point => point is null || point.Cpu < 0 || point.Other < 0) ||
+                item.LoadCurve[0] is not { Pulse: false } ||
+                item.Initial is null ||
+                item.ReferenceBandwidth <= 0 || item.CpuMaxRate <= 0)
+            {
+                errors.Add(new(EContentCategory.SimBenchmark, item.Id, "benchmark requires airflows, workloads, loadCurve (first point non-pulse), an initial setup, positive reference values and normalized non-negative weights."));
+                continue;
+            }
+
+            // 规则脚本按 loadCurve 下标读取显卡 testWatts；数组过短会产生 NaN 或越界。
+            // 这属于 benchmark 与显卡的契约问题，因此归到 benchmark，回退到可用的基准定义。
+            var badCard = store.GraphicsCards.Values.FirstOrDefault(card =>
+                card.TestWatts is not { } watts ||
+                watts.Length != item.LoadCurve.Length ||
+                watts.Any(static value => value < 0));
+            if (badCard is not null)
+            {
+                errors.Add(new(EContentCategory.SimBenchmark, item.Id,
+                    $"graphics card '{badCard.Id}' testWatts must have one non-negative value per loadCurve point ({item.LoadCurve.Length})."));
+            }
+
+            if (!TryValidateSetup(store, item, slotCount, item.Initial, out var reason))
+                errors.Add(new(EContentCategory.SimBenchmark, item.Id, $"benchmark initial setup is invalid: {reason}"));
+        }
+
+        foreach (var item in store.GameModes.Values)
+        {
+            if (string.IsNullOrWhiteSpace(item.Mode) || string.IsNullOrWhiteSpace(item.Index) ||
+                string.IsNullOrWhiteSpace(item.Title))
+                errors.Add(new(EContentCategory.SimGameMode, item.Id, "game mode requires mode, index and title."));
+        }
+
+        foreach (var item in store.Commissions.Values)
+        {
+            if (string.IsNullOrWhiteSpace(item.Title) || item.Budget <= 0 || item.BuildFee < 0 ||
+                item.MinimumMemoryGb < 0 ||
+                !IsKnownGraphicsCard(store, item.RequiredGpuId) ||
+                !TryResolveWorkloadIndex(benchmark, item.WorkloadId, out _))
+                errors.Add(new(EContentCategory.SimCommission, item.Id, "commission requires a title, positive budget, a valid requiredGpuId and workloadId."));
+        }
+
+        foreach (var item in store.DiagnosisCases.Values)
+        {
+            if (!IsKnownCase(store, item.CaseId) || !IsKnownPowerSupply(store, item.FaultyPsuId) ||
+                item.Setup is not { Front360: true } || item.ReplacementAllowance < 1)
+                errors.Add(new(EContentCategory.SimDiagnosisCase, item.Id, "diagnosis case references an unknown caseId or faultyPsuId, is not a 360 front-mounted setup, or has no replacement allowance."));
+
+            if (!TryValidateSetup(store, benchmark, slotCount, item.Setup, out var reason))
+                errors.Add(new(EContentCategory.SimDiagnosisCase, item.Id, $"diagnosis case setup is invalid: {reason}"));
+        }
+
+        foreach (var item in store.Challenges.Values)
+        {
+            if (!TryValidateChallenge(store, benchmark, slotCount, item, out var reason))
+                errors.Add(new(EContentCategory.SimChallenge, item.Id, reason));
+        }
+    }
+
+    private static bool ValidVolume(HardwareVolumeDto? volume) =>
+        volume is { Origin.Length: 3, Size.Length: 3 } && volume.Size.All(value => value > 0);
+
+    /// <summary>
+    /// 规则脚本的 reportScores 会拒绝长度不符、含负值或总和不为 1 的六维权重；
+    /// computeWeights 全为 0 会让性能项变成 Infinity。这里提前拦下，避免运行时抛错。
+    /// </summary>
+    private static bool IsValidWorkload(BenchmarkWorkloadDto workload)
+    {
+        if (workload.ComputeWeights is not { Length: 3 } computeWeights ||
+            workload.Weights is not { Length: 6 } weights ||
+            workload.ReferenceRoi <= 0)
+        {
+            return false;
+        }
+
+        return computeWeights.All(static value => float.IsFinite(value) && value >= 0) &&
+            computeWeights.Sum(static value => (double)value) > 0 &&
+            weights.All(static value => float.IsFinite(value) && value >= 0) &&
+            Math.Abs(weights.Sum(static value => (double)value) - 1d) <= 1e-6;
+    }
+
+    /// <summary>
+    /// 校验一个 <see cref="BenchSetupDto"/> 的引用是否能在当前目录里解析：
+    /// 设置里的硬件/风道/工况 id 必须存在，槽位下标必须落在当前主板的槽位数量内。
+    /// 空字符串表示使用下标 0 的默认值（与 <c>GameContent.ResolveSetup</c> 一致）。
+    /// </summary>
+    private static bool TryValidateSetup(
+        GameDefinitionStore store,
+        BenchmarkDefinitionDto? benchmark,
+        int slotCount,
+        BenchSetupDto? setup,
+        out string reason)
+    {
+        if (setup is null)
+        {
+            reason = "setup is missing.";
+            return false;
+        }
+
+        if (setup.Slots is null)
+        {
+            reason = "slots is null.";
+            return false;
+        }
+
+        var occupied = new HashSet<int>();
+        foreach (var slot in setup.Slots)
+        {
+            if (slot < 0 || slot >= slotCount)
+            {
+                reason = $"slot index {slot} is outside the motherboard's {slotCount} slots.";
+                return false;
+            }
+            if (!occupied.Add(slot))
+            {
+                reason = $"slot index {slot} is repeated.";
+                return false;
+            }
+        }
+
+        if (!IsEmptyOrKnownCase(store, setup.CaseId, out reason) ||
+            !IsEmptyOrKnownRam(store, setup.RamId, out reason) ||
+            !IsEmptyOrKnownGraphicsCard(store, setup.GpuId, out reason) ||
+            !IsEmptyOrKnownPowerSupply(store, setup.PsuId, out reason))
+        {
+            return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(setup.AirflowId) &&
+            !OrderedAirflows(benchmark).Any(airflow => string.Equals(airflow.Id, setup.AirflowId, StringComparison.Ordinal)))
+        {
+            reason = $"unknown airflowId '{setup.AirflowId}'.";
+            return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(setup.WorkloadId) &&
+            !OrderedWorkloads(benchmark).Any(workload => string.Equals(workload.Id, setup.WorkloadId, StringComparison.Ordinal)))
+        {
+            reason = $"unknown workloadId '{setup.WorkloadId}'.";
+            return false;
+        }
+
+        reason = string.Empty;
+        return true;
+    }
+
+    /// <summary>
+    /// 神秘箱准入：箱内清单非空、初始选择来自清单、固定配置可解析，
+    /// 且提交工况必须与固定配置的工况一致（玩家在箱内不能改工况）。
+    /// </summary>
+    private static bool TryValidateChallenge(
+        GameDefinitionStore store,
+        BenchmarkDefinitionDto? benchmark,
+        int slotCount,
+        ChallengeDefinitionDto item,
+        out string reason)
+    {
+        if (!item.Crate)
+        {
+            reason = "challenge references unknown hardware ids or is not a crate challenge.";
+            return false;
+        }
+
+        if (!HasInventory(item.CaseIds) || !HasInventory(item.GpuIds) || !HasInventory(item.PsuIds))
+        {
+            reason = "crate challenge requires non-empty caseIds, gpuIds and psuIds.";
+            return false;
+        }
+
+        if (item.CaseIds.Any(id => !IsKnownCase(store, id)) ||
+            item.GpuIds.Any(id => !IsKnownGraphicsCard(store, id)) ||
+            item.PsuIds.Any(id => !IsKnownPowerSupply(store, id)))
+        {
+            reason = "challenge references unknown hardware ids or is not a crate challenge.";
+            return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(item.InitialCaseId) &&
+            (!item.CaseIds.Contains(item.InitialCaseId, StringComparer.Ordinal) || !IsKnownCase(store, item.InitialCaseId)) ||
+            !string.IsNullOrWhiteSpace(item.InitialGpuId) &&
+            (!item.GpuIds.Contains(item.InitialGpuId, StringComparer.Ordinal) || !IsKnownGraphicsCard(store, item.InitialGpuId)) ||
+            !string.IsNullOrWhiteSpace(item.InitialPsuId) &&
+            (!item.PsuIds.Contains(item.InitialPsuId, StringComparer.Ordinal) || !IsKnownPowerSupply(store, item.InitialPsuId)))
+        {
+            reason = "challenge initial hardware must come from its crate inventory.";
+            return false;
+        }
+
+        if (item.Fixed is null)
+        {
+            reason = "crate challenge requires a fixed setup.";
+            return false;
+        }
+
+        if (!TryValidateSetup(store, benchmark, slotCount, item.Fixed, out reason))
+        {
+            reason = $"crate challenge fixed setup is invalid: {reason}";
+            return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(item.Fixed.CaseId) && !item.CaseIds.Contains(item.Fixed.CaseId, StringComparer.Ordinal) ||
+            !string.IsNullOrWhiteSpace(item.Fixed.GpuId) && !item.GpuIds.Contains(item.Fixed.GpuId, StringComparer.Ordinal) ||
+            !string.IsNullOrWhiteSpace(item.Fixed.PsuId) && !item.PsuIds.Contains(item.Fixed.PsuId, StringComparer.Ordinal))
+        {
+            reason = "crate challenge fixed hardware must come from its crate inventory.";
+            return false;
+        }
+
+        if (!TryResolveWorkloadIndex(benchmark, item.Fixed.WorkloadId, out var fixedWorkload) ||
+            !TryResolveWorkloadIndex(benchmark, item.SubmitWorkloadId, out var submitWorkload))
+        {
+            reason = $"unknown submitWorkloadId '{item.SubmitWorkloadId}' or workloadId '{item.Fixed.WorkloadId}'.";
+            return false;
+        }
+
+        if (fixedWorkload != submitWorkload)
+        {
+            reason = "submitWorkloadId must match the fixed setup workloadId.";
+            return false;
+        }
+
+        reason = string.Empty;
+        return true;
+    }
+
+    private static bool HasInventory(string[]? ids) =>
+        ids is { Length: > 0 } && ids.All(static id => !string.IsNullOrWhiteSpace(id));
+
+    private static HardwareMotherboardDto? FirstOrderedMotherboard(GameDefinitionStore store) =>
+        store.Motherboards.Values
+            .OrderBy(static item => item.Order)
+            .ThenBy(static item => item.Id, StringComparer.Ordinal)
+            .FirstOrDefault();
+
+    /// <summary>
+    /// 与 <c>GameContent</c> 的 benchmark 选择完全一致：Ordered 先按 order（benchmark 无该字段，恒为 0）
+    /// 再按 id 序数排序，取第一条；字典枚举顺序不能替代这个排序。
+    /// </summary>
+    private static BenchmarkDefinitionDto? FirstBenchmark(GameDefinitionStore store) =>
+        store.Benchmarks.Values
+            .OrderBy(static item => item.Id, StringComparer.Ordinal)
+            .FirstOrDefault();
+
+    private static BenchmarkAirflowDto[] OrderedAirflows(BenchmarkDefinitionDto? benchmark) =>
+        benchmark?.Airflows is { } airflows
+            ? airflows
+                .Where(static item => item is not null)
+                .OrderBy(static item => item.Order)
+                .ThenBy(static item => item.Id, StringComparer.Ordinal)
+                .ToArray()
+            : [];
+
+    private static BenchmarkWorkloadDto[] OrderedWorkloads(BenchmarkDefinitionDto? benchmark) =>
+        benchmark?.Workloads is { } workloads
+            ? workloads
+                .Where(static item => item is not null)
+                .OrderBy(static item => item.Order)
+                .ThenBy(static item => item.Id, StringComparer.Ordinal)
+                .ToArray()
+            : [];
+
+    /// <summary>按 <c>GameContent.ResolveWorkload</c> 的排序口径解析工况下标；空 id 表示默认 0。</summary>
+    private static bool TryResolveWorkloadIndex(BenchmarkDefinitionDto? benchmark, string? id, out int index)
+    {
+        var workloads = OrderedWorkloads(benchmark);
+        if (workloads.Length == 0)
+        {
+            index = -1;
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            index = 0;
+            return true;
+        }
+
+        for (int i = 0; i < workloads.Length; i++)
+        {
+            if (string.Equals(workloads[i].Id, id, StringComparison.Ordinal))
+            {
+                index = i;
+                return true;
+            }
+        }
+
+        index = -1;
+        return false;
+    }
+
+    private static bool IsKnownCase(GameDefinitionStore store, string? id) =>
+        !string.IsNullOrWhiteSpace(id) && store.TryGetCase(id!, out _);
+
+    private static bool IsKnownGraphicsCard(GameDefinitionStore store, string? id) =>
+        !string.IsNullOrWhiteSpace(id) && store.TryGetGraphicsCard(id!, out _);
+
+    private static bool IsKnownPowerSupply(GameDefinitionStore store, string? id) =>
+        !string.IsNullOrWhiteSpace(id) && store.TryGetPowerSupply(id!, out _);
+
+    private static bool IsEmptyOrKnownCase(GameDefinitionStore store, string? id, out string reason)
+    {
+        if (string.IsNullOrWhiteSpace(id) || store.TryGetCase(id!, out _))
+        {
+            reason = string.Empty;
+            return true;
+        }
+
+        reason = $"unknown caseId '{id}'.";
+        return false;
+    }
+
+    private static bool IsEmptyOrKnownRam(GameDefinitionStore store, string? id, out string reason)
+    {
+        if (string.IsNullOrWhiteSpace(id) || store.TryGetMemoryModule(id!, out _))
+        {
+            reason = string.Empty;
+            return true;
+        }
+
+        reason = $"unknown ramId '{id}'.";
+        return false;
+    }
+
+    private static bool IsEmptyOrKnownGraphicsCard(GameDefinitionStore store, string? id, out string reason)
+    {
+        if (string.IsNullOrWhiteSpace(id) || store.TryGetGraphicsCard(id!, out _))
+        {
+            reason = string.Empty;
+            return true;
+        }
+
+        reason = $"unknown gpuId '{id}'.";
+        return false;
+    }
+
+    private static bool IsEmptyOrKnownPowerSupply(GameDefinitionStore store, string? id, out string reason)
+    {
+        if (string.IsNullOrWhiteSpace(id) || store.TryGetPowerSupply(id!, out _))
+        {
+            reason = string.Empty;
+            return true;
+        }
+
+        reason = $"unknown psuId '{id}'.";
+        return false;
     }
 
     /// <summary>

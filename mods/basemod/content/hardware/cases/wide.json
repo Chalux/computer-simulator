@@ -1,0 +1,13 @@
+{
+  "order": 1,
+  "name": "宽体机箱",
+  "price": 569,
+  "heightLimit": 175,
+  "gpuLimit": 410,
+  "psuLimit": 200,
+  "psuAnchor": [1, 0, 274],
+  "naturalAirflow": 0.46,
+  "color": "黑",
+  "formFactor": "ATX",
+  "asset": "assets/models/cases/wide.glb"
+}

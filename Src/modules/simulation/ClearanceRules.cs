@@ -5,19 +5,25 @@ using Puerts;
 
 namespace ComputerSimulator.Modules.Simulation;
 
+/// <summary>
+/// 装配 / 负载规则宿主。目录数据与规则脚本所需的完整目录 JSON 都来自
+/// <see cref="GameContent"/>；本类不再读取任何嵌入资源或静态目录。
+/// </summary>
 internal sealed class ClearanceRules : IDisposable
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
-    private readonly string _data = ReadResource("Clearance.Catalog");
     private readonly ScriptEnv _env;
     private readonly Func<string, string, string> _inspect;
-
     private readonly Func<string, string, int, string> _testLoad;
+    private readonly string _catalogJson;
+
     public BenchCatalog Catalog { get; }
 
-    public ClearanceRules()
+    public ClearanceRules(GameContent content)
     {
-        Catalog = JsonSerializer.Deserialize<BenchCatalog>(_data, JsonOptions)!;
+        ArgumentNullException.ThrowIfNull(content);
+        Catalog = content.Catalog;
+        _catalogJson = content.RuleCatalogJson;
         _env = new ScriptEnv(new BackendV8(new RuleLoader()));
         try
         {
@@ -34,13 +40,13 @@ internal sealed class ClearanceRules : IDisposable
 
     public FitResult Inspect(BenchSetup setup)
     {
-        var report = _inspect(_data, JsonSerializer.Serialize(setup, JsonOptions));
+        var report = _inspect(_catalogJson, JsonSerializer.Serialize(setup, JsonOptions));
         return JsonSerializer.Deserialize<FitResult>(report, JsonOptions)!;
     }
 
     public LoadResult TestLoad(BenchSetup setup, int psuIndex)
     {
-        var report = _testLoad(_data, JsonSerializer.Serialize(setup, JsonOptions), psuIndex);
+        var report = _testLoad(_catalogJson, JsonSerializer.Serialize(setup, JsonOptions), psuIndex);
         return JsonSerializer.Deserialize<LoadResult>(report, JsonOptions)!;
     }
 

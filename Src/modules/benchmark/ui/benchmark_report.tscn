@@ -1,0 +1,282 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://Src/modules/benchmark/BenchmarkReportView.cs" id="1_screen"]
+[ext_resource type="Script" path="res://Src/modules/benchmark/ScoreRadar.cs" id="2_radar"]
+
+[node name="BenchmarkReportView" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+script = ExtResource("1_screen")
+
+[node name="Scroll" type="ScrollContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_scroll_mode = 0
+
+[node name="Margin" type="MarginContainer" parent="Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="Page" type="VBoxContainer" parent="Scroll/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Heading" type="HBoxContainer" parent="Scroll/Margin/Page"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="Scroll/Margin/Page/Heading"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+text = "负载报告"
+
+[node name="Total" type="Label" parent="Scroll/Margin/Page/Heading"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+
+[node name="Conditions" type="Label" parent="Scroll/Margin/Page"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+autowrap_mode = 3
+
+[node name="Stale" type="Label" parent="Scroll/Margin/Page"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+mouse_filter = 2
+text = "配置已变更 · 以下为上次测试"
+
+[node name="ComparisonPanel" type="PanelContainer" parent="Scroll/Margin/Page"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="ComparisonBody" type="VBoxContainer" parent="Scroll/Margin/Page/ComparisonPanel"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Head" type="HBoxContainer" parent="Scroll/Margin/Page/ComparisonPanel/ComparisonBody"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ComparisonTitle" type="Label" parent="Scroll/Margin/Page/ComparisonPanel/ComparisonBody/Head"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+text = "对照比较"
+
+[node name="ComparisonCaption" type="Label" parent="Scroll/Margin/Page/ComparisonPanel/ComparisonBody/Head"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+text = "变化 = 当前 − 对照"
+
+[node name="Expander" type="Control" parent="Scroll/Margin/Page/ComparisonPanel/ComparisonBody/Head"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="PinButton" type="Button" parent="Scroll/Margin/Page/ComparisonPanel/ComparisonBody/Head"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(80, 26)
+layout_mode = 2
+size_flags_vertical = 4
+focus_mode = 2
+text = "设为对照"
+
+[node name="ClearButton" type="Button" parent="Scroll/Margin/Page/ComparisonPanel/ComparisonBody/Head"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(80, 26)
+layout_mode = 2
+size_flags_vertical = 4
+focus_mode = 2
+text = "清除对照"
+
+[node name="Identities" type="VBoxContainer" parent="Scroll/Margin/Page/ComparisonPanel/ComparisonBody"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="BaselineRow" type="HBoxContainer" parent="Scroll/Margin/Page/ComparisonPanel/ComparisonBody/Identities"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="BaselineTag" type="Label" parent="Scroll/Margin/Page/ComparisonPanel/ComparisonBody/Identities/BaselineRow"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+text = "对照"
+
+[node name="BaselineText" type="Label" parent="Scroll/Margin/Page/ComparisonPanel/ComparisonBody/Identities/BaselineRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+autowrap_mode = 3
+
+[node name="CurrentRow" type="HBoxContainer" parent="Scroll/Margin/Page/ComparisonPanel/ComparisonBody/Identities"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="CurrentTag" type="Label" parent="Scroll/Margin/Page/ComparisonPanel/ComparisonBody/Identities/CurrentRow"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+text = "当前"
+
+[node name="CurrentText" type="Label" parent="Scroll/Margin/Page/ComparisonPanel/ComparisonBody/Identities/CurrentRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+autowrap_mode = 3
+
+[node name="Summary" type="HBoxContainer" parent="Scroll/Margin/Page/ComparisonPanel/ComparisonBody"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 16
+
+[node name="TotalMetric" type="HBoxContainer" parent="Scroll/Margin/Page/ComparisonPanel/ComparisonBody/Summary"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="TotalCaption" type="Label" parent="Scroll/Margin/Page/ComparisonPanel/ComparisonBody/Summary/TotalMetric"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+text = "总分"
+
+[node name="TotalCompare" type="Label" parent="Scroll/Margin/Page/ComparisonPanel/ComparisonBody/Summary/TotalMetric"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+
+[node name="TotalDelta" type="Label" parent="Scroll/Margin/Page/ComparisonPanel/ComparisonBody/Summary/TotalMetric"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+
+[node name="PriceMetric" type="HBoxContainer" parent="Scroll/Margin/Page/ComparisonPanel/ComparisonBody/Summary"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="PriceCaption" type="Label" parent="Scroll/Margin/Page/ComparisonPanel/ComparisonBody/Summary/PriceMetric"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+text = "价格"
+
+[node name="PriceCompare" type="Label" parent="Scroll/Margin/Page/ComparisonPanel/ComparisonBody/Summary/PriceMetric"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+
+[node name="PriceDelta" type="Label" parent="Scroll/Margin/Page/ComparisonPanel/ComparisonBody/Summary/PriceMetric"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+
+[node name="NoiseMetric" type="HBoxContainer" parent="Scroll/Margin/Page/ComparisonPanel/ComparisonBody/Summary"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="NoiseCaption" type="Label" parent="Scroll/Margin/Page/ComparisonPanel/ComparisonBody/Summary/NoiseMetric"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+text = "噪声"
+
+[node name="NoiseCompare" type="Label" parent="Scroll/Margin/Page/ComparisonPanel/ComparisonBody/Summary/NoiseMetric"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+
+[node name="NoiseDelta" type="Label" parent="Scroll/Margin/Page/ComparisonPanel/ComparisonBody/Summary/NoiseMetric"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+
+[node name="AxisRow" type="HBoxContainer" parent="Scroll/Margin/Page/ComparisonPanel/ComparisonBody"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="AxisCaption" type="Label" parent="Scroll/Margin/Page/ComparisonPanel/ComparisonBody/AxisRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+text = "分项 Δ（分）"
+
+[node name="AxisGrid" type="GridContainer" parent="Scroll/Margin/Page/ComparisonPanel/ComparisonBody/AxisRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 6
+theme_override_constants/h_separation = 6
+
+[node name="CompareHint" type="Label" parent="Scroll/Margin/Page/ComparisonPanel/ComparisonBody"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+autowrap_mode = 3
+
+[node name="Radar" type="Control" parent="Scroll/Margin/Page"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 215)
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+script = ExtResource("2_radar")
+
+[node name="Legend" type="Label" parent="Scroll/Margin/Page"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+text = "金色环  100 分基准"
+
+[node name="Rule" type="HSeparator" parent="Scroll/Margin/Page"]
+layout_mode = 2
+
+[node name="Sensors" type="Label" parent="Scroll/Margin/Page"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+autowrap_mode = 3

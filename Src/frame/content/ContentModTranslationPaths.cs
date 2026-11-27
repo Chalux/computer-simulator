@@ -7,6 +7,8 @@ public static class ContentModTranslationPaths
     public static string GetDirectory(DiscoveredModEntry entry)
     {
         ArgumentNullException.ThrowIfNull(entry);
-        return Path.Combine(entry.FolderPath, entry.Manifest.ContentRoot, TranslationsFolderName);
+        return ContentModPath.Combine(
+            ContentModPath.Combine(entry.FolderPath, entry.Manifest.ContentRoot),
+            TranslationsFolderName);
     }
 }

@@ -1,0 +1,12 @@
+{
+  "order": 1,
+  "name": "素面矮马甲",
+  "dimensions": [133, 7, 32],
+  "price": 199,
+  "color": "灰",
+  "lighting": "无",
+  "rgb": false,
+  "gb": 16,
+  "rate": 5600,
+  "asset": "assets/models/memory/low_profile.glb"
+}

@@ -1,0 +1,586 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://Src/modules/diagnosis/DiagnosisCaseScreen.cs" id="1_screen"]
+[ext_resource type="Script" path="res://Src/modules/menu/TechBackdrop.cs" id="2_backdrop"]
+[ext_resource type="Script" path="res://Src/modules/inspection/SectionDrawing.cs" id="3_section"]
+
+[node name="DiagnosisCaseScreen" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+script = ExtResource("1_screen")
+
+[node name="Backdrop" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("2_backdrop")
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 56
+theme_override_constants/margin_top = 44
+theme_override_constants/margin_right = 56
+theme_override_constants/margin_bottom = 26
+
+[node name="Page" type="VBoxContainer" parent="Margin"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 0
+
+[node name="Header" type="HBoxContainer" parent="Margin/Page"]
+custom_minimum_size = Vector2(0, 84)
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="Titles" type="VBoxContainer" parent="Margin/Page/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+theme_override_constants/separation = 2
+
+[node name="KickerRow" type="HBoxContainer" parent="Margin/Page/Header/Titles"]
+custom_minimum_size = Vector2(0, 13)
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="KickerBar" type="ColorRect" parent="Margin/Page/Header/Titles/KickerRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(2, 11)
+size_flags_vertical = 4
+mouse_filter = 2
+color = Color(0.357, 0.89, 0.816, 1)
+
+[node name="Kicker" type="Label" parent="Margin/Page/Header/Titles/KickerRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+
+[node name="Title" type="Label" parent="Margin/Page/Header/Titles"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+text = "满载黑屏"
+
+[node name="Subtitle" type="Label" parent="Margin/Page/Header/Titles"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Actions" type="VBoxContainer" parent="Margin/Page/Header"]
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_constants/separation = 5
+
+[node name="TagRow" type="HBoxContainer" parent="Margin/Page/Header/Actions"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Expander" type="Control" parent="Margin/Page/Header/Actions/TagRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="StatusDotHost" type="Control" parent="Margin/Page/Header/Actions/TagRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(8, 8)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+
+[node name="StatusTag" type="Label" parent="Margin/Page/Header/Actions/TagRow"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+text = "故障待修"
+
+[node name="BackButton" type="Button" parent="Margin/Page/Header/Actions"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 8
+focus_mode = 2
+text = "返回模式选择   ESC"
+
+[node name="HeaderRule" type="ColorRect" parent="Margin/Page"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 1)
+mouse_filter = 2
+color = Color(0.102, 0.141, 0.161, 0.55)
+
+[node name="Content" type="HBoxContainer" parent="Margin/Page"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 22
+
+[node name="DossierScroll" type="ScrollContainer" parent="Margin/Page/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+follow_focus = true
+
+[node name="DossierColumn" type="VBoxContainer" parent="Margin/Page/Content/DossierScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="CustomerTitle" type="Label" parent="Margin/Page/Content/DossierScroll/DossierColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+text = "客户描述"
+
+[node name="Brief" type="Label" parent="Margin/Page/Content/DossierScroll/DossierColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+autowrap_mode = 3
+text = "客户送来一台前置 360 水冷整机：桌面待机正常，一进入高负载游戏就整机黑屏并自动重启。整机没有摔碰或进水，客户只希望查明原因并一次修好，不接受用降级显卡换稳定。"
+
+[node name="Rule1" type="ColorRect" parent="Margin/Page/Content/DossierScroll/DossierColumn"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 1)
+mouse_filter = 2
+color = Color(0.102, 0.141, 0.161, 0.45)
+
+[node name="FixedTitle" type="Label" parent="Margin/Page/Content/DossierScroll/DossierColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+text = "固定整机配置"
+
+[node name="ConfigGrid" type="GridContainer" parent="Margin/Page/Content/DossierScroll/DossierColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 2
+theme_override_constants/h_separation = 18
+theme_override_constants/v_separation = 4
+
+[node name="CaseKey" type="Label" parent="Margin/Page/Content/DossierScroll/DossierColumn/ConfigGrid"]
+layout_mode = 2
+mouse_filter = 2
+text = "机箱"
+
+[node name="ConfigCase" type="Label" parent="Margin/Page/Content/DossierScroll/DossierColumn/ConfigGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+autowrap_mode = 3
+
+[node name="BoardKey" type="Label" parent="Margin/Page/Content/DossierScroll/DossierColumn/ConfigGrid"]
+layout_mode = 2
+mouse_filter = 2
+text = "主板"
+
+[node name="ConfigBoard" type="Label" parent="Margin/Page/Content/DossierScroll/DossierColumn/ConfigGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+autowrap_mode = 3
+
+[node name="CoolerKey" type="Label" parent="Margin/Page/Content/DossierScroll/DossierColumn/ConfigGrid"]
+layout_mode = 2
+mouse_filter = 2
+text = "散热"
+
+[node name="ConfigCooler" type="Label" parent="Margin/Page/Content/DossierScroll/DossierColumn/ConfigGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+autowrap_mode = 3
+
+[node name="GpuKey" type="Label" parent="Margin/Page/Content/DossierScroll/DossierColumn/ConfigGrid"]
+layout_mode = 2
+mouse_filter = 2
+text = "显卡"
+
+[node name="ConfigGpu" type="Label" parent="Margin/Page/Content/DossierScroll/DossierColumn/ConfigGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+autowrap_mode = 3
+
+[node name="RamKey" type="Label" parent="Margin/Page/Content/DossierScroll/DossierColumn/ConfigGrid"]
+layout_mode = 2
+mouse_filter = 2
+text = "内存"
+
+[node name="ConfigRam" type="Label" parent="Margin/Page/Content/DossierScroll/DossierColumn/ConfigGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+autowrap_mode = 3
+
+[node name="PsuKey" type="Label" parent="Margin/Page/Content/DossierScroll/DossierColumn/ConfigGrid"]
+layout_mode = 2
+mouse_filter = 2
+text = "电源"
+
+[node name="ConfigPsu" type="Label" parent="Margin/Page/Content/DossierScroll/DossierColumn/ConfigGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+autowrap_mode = 3
+
+[node name="Rule2" type="ColorRect" parent="Margin/Page/Content/DossierScroll/DossierColumn"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 1)
+mouse_filter = 2
+color = Color(0.102, 0.141, 0.161, 0.45)
+
+[node name="FitTitle" type="Label" parent="Margin/Page/Content/DossierScroll/DossierColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+text = "装配检查 · 规则实测"
+
+[node name="FitStatusRow" type="HBoxContainer" parent="Margin/Page/Content/DossierScroll/DossierColumn"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="FitDotHost" type="Control" parent="Margin/Page/Content/DossierScroll/DossierColumn/FitStatusRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(8, 8)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+
+[node name="FitStatusLabel" type="Label" parent="Margin/Page/Content/DossierScroll/DossierColumn/FitStatusRow"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+
+[node name="FitGrid" type="GridContainer" parent="Margin/Page/Content/DossierScroll/DossierColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 2
+theme_override_constants/h_separation = 18
+theme_override_constants/v_separation = 4
+
+[node name="FitGpuKey" type="Label" parent="Margin/Page/Content/DossierScroll/DossierColumn/FitGrid"]
+layout_mode = 2
+mouse_filter = 2
+text = "显卡限长"
+
+[node name="FitGpu" type="Label" parent="Margin/Page/Content/DossierScroll/DossierColumn/FitGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+autowrap_mode = 3
+
+[node name="FitPsuKey" type="Label" parent="Margin/Page/Content/DossierScroll/DossierColumn/FitGrid"]
+layout_mode = 2
+mouse_filter = 2
+text = "电源仓"
+
+[node name="FitPsu" type="Label" parent="Margin/Page/Content/DossierScroll/DossierColumn/FitGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+autowrap_mode = 3
+
+[node name="FitHeightKey" type="Label" parent="Margin/Page/Content/DossierScroll/DossierColumn/FitGrid"]
+layout_mode = 2
+mouse_filter = 2
+text = "侧板余量"
+
+[node name="FitHeight" type="Label" parent="Margin/Page/Content/DossierScroll/DossierColumn/FitGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+autowrap_mode = 3
+
+[node name="FitMemoryKey" type="Label" parent="Margin/Page/Content/DossierScroll/DossierColumn/FitGrid"]
+layout_mode = 2
+mouse_filter = 2
+text = "内存"
+
+[node name="FitMemory" type="Label" parent="Margin/Page/Content/DossierScroll/DossierColumn/FitGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+autowrap_mode = 3
+
+[node name="FitIssuesKey" type="Label" parent="Margin/Page/Content/DossierScroll/DossierColumn/FitGrid"]
+layout_mode = 2
+mouse_filter = 2
+text = "物理干涉"
+
+[node name="FitIssues" type="Label" parent="Margin/Page/Content/DossierScroll/DossierColumn/FitGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+autowrap_mode = 3
+
+[node name="Section" type="Control" parent="Margin/Page/Content/DossierScroll/DossierColumn"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 122)
+layout_mode = 2
+mouse_filter = 2
+script = ExtResource("3_section")
+
+[node name="SectionCaption" type="Label" parent="Margin/Page/Content/DossierScroll/DossierColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+autowrap_mode = 3
+
+[node name="Divider" type="ColorRect" parent="Margin/Page/Content"]
+layout_mode = 2
+custom_minimum_size = Vector2(1, 0)
+size_flags_vertical = 3
+mouse_filter = 2
+color = Color(0.102, 0.141, 0.161, 0.45)
+
+[node name="RepairScroll" type="ScrollContainer" parent="Margin/Page/Content"]
+custom_minimum_size = Vector2(420, 0)
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+follow_focus = true
+
+[node name="RepairColumn" type="VBoxContainer" parent="Margin/Page/Content/RepairScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="FaultPanel" type="PanelContainer" parent="Margin/Page/Content/RepairScroll/RepairColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="FaultBody" type="VBoxContainer" parent="Margin/Page/Content/RepairScroll/RepairColumn/FaultPanel"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="FaultHead" type="HBoxContainer" parent="Margin/Page/Content/RepairScroll/RepairColumn/FaultPanel/FaultBody"]
+layout_mode = 2
+
+[node name="FaultTitle" type="Label" parent="Margin/Page/Content/RepairScroll/RepairColumn/FaultPanel/FaultBody/FaultHead"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+text = "故障复现"
+
+[node name="FaultTag" type="Label" parent="Margin/Page/Content/RepairScroll/RepairColumn/FaultPanel/FaultBody/FaultHead"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+text = "LOAD TEST / ORIGINAL"
+
+[node name="FaultRule" type="ColorRect" parent="Margin/Page/Content/RepairScroll/RepairColumn/FaultPanel/FaultBody"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 1)
+mouse_filter = 2
+color = Color(0.102, 0.141, 0.161, 0.55)
+
+[node name="FaultStatus" type="Label" parent="Margin/Page/Content/RepairScroll/RepairColumn/FaultPanel/FaultBody"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+
+[node name="FaultLoad" type="Label" parent="Margin/Page/Content/RepairScroll/RepairColumn/FaultPanel/FaultBody"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+
+[node name="FaultPsu" type="Label" parent="Margin/Page/Content/RepairScroll/RepairColumn/FaultPanel/FaultBody"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+autowrap_mode = 3
+
+[node name="FaultWorkload" type="Label" parent="Margin/Page/Content/RepairScroll/RepairColumn/FaultPanel/FaultBody"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+autowrap_mode = 3
+
+[node name="FaultRule2" type="ColorRect" parent="Margin/Page/Content/RepairScroll/RepairColumn/FaultPanel/FaultBody"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 1)
+mouse_filter = 2
+color = Color(0.102, 0.141, 0.161, 0.45)
+
+[node name="CurveTitle" type="Label" parent="Margin/Page/Content/RepairScroll/RepairColumn/FaultPanel/FaultBody"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+text = "负载曲线实测"
+
+[node name="FaultCurve" type="Label" parent="Margin/Page/Content/RepairScroll/RepairColumn/FaultPanel/FaultBody"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+autowrap_mode = 3
+
+[node name="FaultRule3" type="ColorRect" parent="Margin/Page/Content/RepairScroll/RepairColumn/FaultPanel/FaultBody"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 1)
+mouse_filter = 2
+color = Color(0.102, 0.141, 0.161, 0.45)
+
+[node name="RecordTitle" type="Label" parent="Margin/Page/Content/RepairScroll/RepairColumn/FaultPanel/FaultBody"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+text = "规则记录"
+
+[node name="FaultMessage" type="Label" parent="Margin/Page/Content/RepairScroll/RepairColumn/FaultPanel/FaultBody"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+autowrap_mode = 3
+
+[node name="FaultClue" type="Label" parent="Margin/Page/Content/RepairScroll/RepairColumn/FaultPanel/FaultBody"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+autowrap_mode = 3
+
+[node name="RepairPanel" type="PanelContainer" parent="Margin/Page/Content/RepairScroll/RepairColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="RepairBody" type="VBoxContainer" parent="Margin/Page/Content/RepairScroll/RepairColumn/RepairPanel"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="RepairHead" type="HBoxContainer" parent="Margin/Page/Content/RepairScroll/RepairColumn/RepairPanel/RepairBody"]
+layout_mode = 2
+
+[node name="RepairTitle" type="Label" parent="Margin/Page/Content/RepairScroll/RepairColumn/RepairPanel/RepairBody/RepairHead"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+text = "维修台"
+
+[node name="RepairTag" type="Label" parent="Margin/Page/Content/RepairScroll/RepairColumn/RepairPanel/RepairBody/RepairHead"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+text = "REPAIR BAY"
+
+[node name="RepairRule" type="ColorRect" parent="Margin/Page/Content/RepairScroll/RepairColumn/RepairPanel/RepairBody"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 1)
+mouse_filter = 2
+color = Color(0.102, 0.141, 0.161, 0.55)
+
+[node name="RepairHint" type="Label" parent="Margin/Page/Content/RepairScroll/RepairColumn/RepairPanel/RepairBody"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+autowrap_mode = 3
+
+[node name="Allowance" type="Label" parent="Margin/Page/Content/RepairScroll/RepairColumn/RepairPanel/RepairBody"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+
+[node name="PsuChoice" type="OptionButton" parent="Margin/Page/Content/RepairScroll/RepairColumn/RepairPanel/RepairBody"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+focus_mode = 2
+
+[node name="CandidatePreview" type="Label" parent="Margin/Page/Content/RepairScroll/RepairColumn/RepairPanel/RepairBody"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+autowrap_mode = 3
+
+[node name="InstallButton" type="Button" parent="Margin/Page/Content/RepairScroll/RepairColumn/RepairPanel/RepairBody"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 2
+
+[node name="RetestButton" type="Button" parent="Margin/Page/Content/RepairScroll/RepairColumn/RepairPanel/RepairBody"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 2
+text = "运行负载复测"
+
+[node name="RepairRule2" type="ColorRect" parent="Margin/Page/Content/RepairScroll/RepairColumn/RepairPanel/RepairBody"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 1)
+mouse_filter = 2
+color = Color(0.102, 0.141, 0.161, 0.45)
+
+[node name="RepairState" type="Label" parent="Margin/Page/Content/RepairScroll/RepairColumn/RepairPanel/RepairBody"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+autowrap_mode = 3
+
+[node name="RetestResult" type="Label" parent="Margin/Page/Content/RepairScroll/RepairColumn/RepairPanel/RepairBody"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+autowrap_mode = 3
+
+[node name="RepairRule3" type="ColorRect" parent="Margin/Page/Content/RepairScroll/RepairColumn/RepairPanel/RepairBody"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 1)
+mouse_filter = 2
+color = Color(0.102, 0.141, 0.161, 0.45)
+
+[node name="ResetButton" type="Button" parent="Margin/Page/Content/RepairScroll/RepairColumn/RepairPanel/RepairBody"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 2
+text = "重新开始本案"
+
+[node name="Footer" type="HBoxContainer" parent="Margin/Page"]
+custom_minimum_size = Vector2(0, 22)
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="FooterNote" type="Label" parent="Margin/Page/Footer"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+text = "验收口径 · 复测不得触发保护断电"
+
+[node name="Expander" type="Control" parent="Margin/Page/Footer"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="FooterEsc" type="Label" parent="Margin/Page/Footer"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+text = "ESC  返回模式选择"

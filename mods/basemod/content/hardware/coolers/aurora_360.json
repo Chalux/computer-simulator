@@ -1,0 +1,17 @@
+{
+  "order": 1,
+  "name": "极光 360 ARGB",
+  "kind": "liquid",
+  "price": 499,
+  "resistance": 0.32,
+  "maxFanDb": 42,
+  "pumpDb": 24,
+  "color": "黑",
+  "lighting": "ARGB",
+  "coreThickness": 27,
+  "fanThickness": 25,
+  "fanSize": 120,
+  "fanCount": 3,
+  "asset": "assets/models/coolers/radiator_360.glb",
+  "pumpAsset": "assets/models/coolers/pump.glb"
+}

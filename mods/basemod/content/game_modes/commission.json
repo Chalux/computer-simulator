@@ -1,0 +1,9 @@
+{
+  "order": 0,
+  "mode": "Commission",
+  "index": "01",
+  "title": "委托挑战",
+  "code": "COMMISSION",
+  "summary": "接受客户委托，在预算、用途与验收标准之间取舍，交出一台能通过验收的整机。",
+  "available": true
+}

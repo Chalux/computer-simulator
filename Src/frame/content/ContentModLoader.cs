@@ -1,5 +1,6 @@
 using System.Text.Json;
 using KemoCard.Frame.Content.Definitions;
+using KemoCard.Frame.Content.Simulator;
 
 namespace KemoCard.Frame.Content;
 
@@ -16,28 +17,47 @@ public sealed class ContentModLoader
         CommentHandling = JsonCommentHandling.Skip,
     };
 
-    public static ModContentBundle Load(DiscoveredModEntry entry)
+    public static ModContentBundle Load(DiscoveredModEntry entry) =>
+        Load(entry, SystemContentModFileSystem.Instance);
+
+    public static ModContentBundle Load(DiscoveredModEntry entry, IContentModFileSystem fileSystem)
     {
+        ArgumentNullException.ThrowIfNull(entry);
+        ArgumentNullException.ThrowIfNull(fileSystem);
+
         var manifest = entry.Manifest;
-        var contentRoot = Path.Combine(entry.FolderPath, manifest.ContentRoot);
+        var contentRoot = ContentModPath.Combine(entry.FolderPath, manifest.ContentRoot);
         try
         {
             var definitions = new ModDefinitionsBundle(
-                LoadDefinitions<CharacterDto>(contentRoot, ContentCategoryPaths.Folder(EContentCategory.Character)),
-                LoadDefinitions<EnemyDto>(contentRoot, ContentCategoryPaths.Folder(EContentCategory.Enemy)),
-                LoadDefinitions<BattleDto>(contentRoot, ContentCategoryPaths.Folder(EContentCategory.Battle)),
-                LoadDefinitions<EventDto>(contentRoot, ContentCategoryPaths.Folder(EContentCategory.Event)),
-                LoadDefinitions<ItemDto>(contentRoot, ContentCategoryPaths.Folder(EContentCategory.Item)),
-                LoadDefinitions<CardDto>(contentRoot, ContentCategoryPaths.Folder(EContentCategory.Card)),
-                LoadDefinitions<SkillDto>(contentRoot, ContentCategoryPaths.Folder(EContentCategory.Skill)),
-                LoadDefinitions<BuffDto>(contentRoot, ContentCategoryPaths.Folder(EContentCategory.Buff)),
-                LoadDefinitions<EffectDto>(contentRoot, ContentCategoryPaths.Folder(EContentCategory.Effect)),
-                LoadDefinitions<AttributeDefDto>(contentRoot, ContentCategoryPaths.Folder(EContentCategory.Attribute)),
-                LoadDefinitions<GameplayEffectDefDto>(contentRoot, ContentCategoryPaths.Folder(EContentCategory.GameplayEffect)),
-                LoadDefinitions<GameplayTagDefDto>(contentRoot, ContentCategoryPaths.Folder(EContentCategory.GameplayTag)),
-                LoadDefinitions<SkillActionDto>(contentRoot, ContentCategoryPaths.Folder(EContentCategory.SkillAction)),
-                LoadDefinitions<StoryDto>(contentRoot, ContentCategoryPaths.Folder(EContentCategory.Story)),
-                LoadDefinitions<OrbTypeDto>(contentRoot, ContentCategoryPaths.Folder(EContentCategory.OrbType)));
+                LoadDefinitions<CharacterDto>(fileSystem, contentRoot, ContentCategoryPaths.Folder(EContentCategory.Character)),
+                LoadDefinitions<EnemyDto>(fileSystem, contentRoot, ContentCategoryPaths.Folder(EContentCategory.Enemy)),
+                LoadDefinitions<BattleDto>(fileSystem, contentRoot, ContentCategoryPaths.Folder(EContentCategory.Battle)),
+                LoadDefinitions<EventDto>(fileSystem, contentRoot, ContentCategoryPaths.Folder(EContentCategory.Event)),
+                LoadDefinitions<ItemDto>(fileSystem, contentRoot, ContentCategoryPaths.Folder(EContentCategory.Item)),
+                LoadDefinitions<CardDto>(fileSystem, contentRoot, ContentCategoryPaths.Folder(EContentCategory.Card)),
+                LoadDefinitions<SkillDto>(fileSystem, contentRoot, ContentCategoryPaths.Folder(EContentCategory.Skill)),
+                LoadDefinitions<BuffDto>(fileSystem, contentRoot, ContentCategoryPaths.Folder(EContentCategory.Buff)),
+                LoadDefinitions<EffectDto>(fileSystem, contentRoot, ContentCategoryPaths.Folder(EContentCategory.Effect)),
+                LoadDefinitions<AttributeDefDto>(fileSystem, contentRoot, ContentCategoryPaths.Folder(EContentCategory.Attribute)),
+                LoadDefinitions<GameplayEffectDefDto>(fileSystem, contentRoot, ContentCategoryPaths.Folder(EContentCategory.GameplayEffect)),
+                LoadDefinitions<GameplayTagDefDto>(fileSystem, contentRoot, ContentCategoryPaths.Folder(EContentCategory.GameplayTag)),
+                LoadDefinitions<SkillActionDto>(fileSystem, contentRoot, ContentCategoryPaths.Folder(EContentCategory.SkillAction)),
+                LoadDefinitions<StoryDto>(fileSystem, contentRoot, ContentCategoryPaths.Folder(EContentCategory.Story)),
+                LoadDefinitions<OrbTypeDto>(fileSystem, contentRoot, ContentCategoryPaths.Folder(EContentCategory.OrbType)),
+                LoadDefinitions<HardwareCaseDto>(fileSystem, contentRoot, ContentCategoryPaths.Folder(EContentCategory.SimCase)),
+                LoadDefinitions<HardwareMotherboardDto>(fileSystem, contentRoot, ContentCategoryPaths.Folder(EContentCategory.SimMotherboard)),
+                LoadDefinitions<HardwareProcessorDto>(fileSystem, contentRoot, ContentCategoryPaths.Folder(EContentCategory.SimProcessor)),
+                LoadDefinitions<HardwareGraphicsCardDto>(fileSystem, contentRoot, ContentCategoryPaths.Folder(EContentCategory.SimGraphicsCard)),
+                LoadDefinitions<HardwareMemoryDto>(fileSystem, contentRoot, ContentCategoryPaths.Folder(EContentCategory.SimMemory)),
+                LoadDefinitions<HardwareStorageDto>(fileSystem, contentRoot, ContentCategoryPaths.Folder(EContentCategory.SimStorage)),
+                LoadDefinitions<HardwareCoolerDto>(fileSystem, contentRoot, ContentCategoryPaths.Folder(EContentCategory.SimCooler)),
+                LoadDefinitions<HardwarePowerSupplyDto>(fileSystem, contentRoot, ContentCategoryPaths.Folder(EContentCategory.SimPowerSupply)),
+                LoadDefinitions<CommissionDefinitionDto>(fileSystem, contentRoot, ContentCategoryPaths.Folder(EContentCategory.SimCommission)),
+                LoadDefinitions<DiagnosisCaseDefinitionDto>(fileSystem, contentRoot, ContentCategoryPaths.Folder(EContentCategory.SimDiagnosisCase)),
+                LoadDefinitions<BenchmarkDefinitionDto>(fileSystem, contentRoot, ContentCategoryPaths.Folder(EContentCategory.SimBenchmark)),
+                LoadDefinitions<GameModeDefinitionDto>(fileSystem, contentRoot, ContentCategoryPaths.Folder(EContentCategory.SimGameMode)),
+                LoadDefinitions<ChallengeDefinitionDto>(fileSystem, contentRoot, ContentCategoryPaths.Folder(EContentCategory.SimChallenge)));
 
             return new ModContentBundle(manifest.ModId, definitions);
         }
@@ -47,34 +67,40 @@ public sealed class ContentModLoader
         }
     }
 
-    private static Dictionary<string, T> LoadDefinitions<T>(string contentRoot, string folderName)
+    private static Dictionary<string, T> LoadDefinitions<T>(
+        IContentModFileSystem fileSystem,
+        string contentRoot,
+        string folderName)
     {
-        var dir = Path.Combine(contentRoot, folderName);
-        if (!Directory.Exists(dir))
+        var dir = ContentModPath.Combine(contentRoot, folderName);
+        if (!fileSystem.DirectoryExists(dir))
         {
             return new Dictionary<string, T>(StringComparer.Ordinal);
         }
 
         var result = new Dictionary<string, T>(StringComparer.Ordinal);
-        foreach (var filePath in Directory.EnumerateFiles(dir, "*.json", SearchOption.TopDirectoryOnly))
+        foreach (var filePath in fileSystem
+                     .EnumerateFiles(dir)
+                     .Where(static path => string.Equals(Path.GetExtension(path), ".json", StringComparison.OrdinalIgnoreCase))
+                     .OrderBy(static path => path, StringComparer.Ordinal))
         {
-            var id = Path.GetFileNameWithoutExtension(filePath);
+            var id = ContentModPath.GetFileNameWithoutExtension(filePath);
             if (string.IsNullOrWhiteSpace(id))
             {
                 continue;
             }
 
-            result[id] = LoadFile<T>(filePath, id);
+            result[id] = LoadFile<T>(fileSystem, filePath, id);
         }
 
         return result;
     }
 
-    private static T LoadFile<T>(string filePath, string id)
+    private static T LoadFile<T>(IContentModFileSystem fileSystem, string filePath, string id)
     {
         try
         {
-            var json = File.ReadAllText(filePath);
+            var json = fileSystem.ReadAllText(filePath);
             return DeserializeWithId<T>(json, id);
         }
         catch (Exception ex) when (ex is not ContentModLoadException)

@@ -1,0 +1,20 @@
+{
+  "order": 0,
+  "title": "满载黑屏",
+  "subtitle": "故障诊断 · 固定液冷整机 · 唯一替换额度",
+  "customerBrief": "客户送来一台前置 360 水冷整机：桌面待机正常，一进入高负载游戏就整机黑屏并自动重启。整机没有摔碰或进水，客户只希望查明原因并一次修好，不接受用降级显卡换稳定。",
+  "caseId": "wide",
+  "setup": {
+    "caseId": "wide",
+    "ramId": "prism",
+    "slots": [1, 3],
+    "offset": 0,
+    "front360": true,
+    "gpuId": "x3",
+    "airflowId": "balanced",
+    "workloadId": "gaming_1080p",
+    "psuId": "max700"
+  },
+  "faultyPsuId": "max700",
+  "replacementAllowance": 1
+}

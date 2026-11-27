@@ -5,22 +5,31 @@ using Godot;
 
 namespace ComputerSimulator.Modules.Inspection;
 
+/// <summary>
+/// 装配视口。硬件外观全部来自外部 Blender 导出的 .glb 资产（res:// 走导入资源，
+/// 磁盘资产走 GLTFDocument）；运行时只生成相机、灯光、地面与冲突调试网格，不再生成硬件几何。
+/// </summary>
 public partial class BenchViewport : SubViewportContainer
 {
     private readonly Node3D _model = new();
     private readonly Camera3D _camera = new() { Projection = Camera3D.ProjectionType.Orthogonal, Near = 1, Far = 2400 };
     private readonly Dictionary<string, StandardMaterial3D> _materials = new();
     private readonly HardwareLibrary _hardware = new();
-    private sealed record Mounted(Node3D Node, Vector3 Extent, bool Rgb, int Fans, float FanThickness, float CoverHeight);
-    private readonly Dictionary<string, Mounted> _mounted = new();
     private readonly Node3D _overlays = new();
+    private readonly Dictionary<string, Mounted> _mounted = new();
+    private readonly HashSet<string> _reportedMissing = new();
+
+    private sealed record Mounted(string Path, Vector3 Origin, Vector3 Size, Node3D Root, HardwareModel Model);
+    private sealed record MountSpec(string Id, string Role, string Path, Vector3 Origin, Vector3 Size);
+
     private Vector3 _frame = new(244, 160, 244);
     private bool _liquid;
     private bool _autoFramed = true;
+    private bool _framedOnce;
     private Vector3 _target = new(122, 82, 122);
     private float _yaw = .93f, _pitch = .48f, _zoom = 350;
-    private MeshInstance3D? _panel;
     private bool _showPanel;
+    private bool _rgb = true;
 
     /// <summary>当前视图预设；手动调整相机时为 -1。</summary>
     public event Action<int>? ViewPresetChanged;
@@ -68,6 +77,12 @@ public partial class BenchViewport : SubViewportContainer
             Position = new Vector3(140, -20, 150)
         });
         SetView(0);
+    }
+
+    public override void _ExitTree()
+    {
+        foreach (var id in _mounted.Keys.ToArray()) Unmount(id);
+        _hardware.Dispose();
     }
 
     public void SetView(int view)
@@ -129,94 +144,186 @@ public partial class BenchViewport : SubViewportContainer
         AcceptEvent();
     }
 
+    /// <summary>显示或隐藏 Blender 资产中的透明侧板。</summary>
     public void ShowPanel(bool show)
     {
         _showPanel = show;
-        if (_panel != null) _panel.Visible = show;
+        if (_mounted.TryGetValue("case", out var mounted)) mounted.Model.SetSidePanelVisible(show);
     }
 
-    public void SetRgb(bool enabled) => _hardware.Led.SetShaderParameter("powered", enabled);
-
-    public void Display(FitResult report)
+    /// <summary>ARGB/LED 节点的可见性切换。</summary>
+    public void SetRgb(bool enabled)
     {
-        var cover = report.Parts.First(p => p.Role == "panel");
+        _rgb = enabled;
+        foreach (var mounted in _mounted.Values) mounted.Model.SetRgb(enabled);
+    }
+
+    /// <summary>按装配结果、目录与所选 SKU 刷新视口。</summary>
+    public void Display(FitResult report, BenchCatalog catalog, BenchSetup setup)
+    {
+        var panel = report.Parts.FirstOrDefault(p => p.Role == "panel");
+        var coverSize = panel is null ? Vector3.Zero : Vector(panel.Size);
         bool liquid = report.GpuLimit.HasValue;
-        bool reframe = liquid != _liquid || _mounted.Count == 0 || (_autoFramed && cover.Extent.X != _frame.X);
+        bool reframe = liquid != _liquid || !_framedOnce || (_autoFramed && coverSize.X != _frame.X);
         _liquid = liquid;
-        _frame = new Vector3(cover.Extent.X, cover.Corner.Y, cover.Extent.Z);
-        if (reframe) SetView(0);
-        var present = report.Parts.Select(p => p.Id).ToHashSet();
-        foreach (var id in _mounted.Keys.Where(id => !present.Contains(id)).ToArray()) Unmount(id);
-        foreach (var p in report.Parts)
+        if (panel is not null) _frame = new Vector3(coverSize.X, panel.Origin[1], coverSize.Z);
+        if (reframe)
         {
-            float coverHeight = p.Role == "panel" ? p.Corner.Y : 0;
-            if (_mounted.TryGetValue(p.Id, out var current))
-            {
-                if (current.Extent == p.Extent && current.Rgb == p.Rgb && current.Fans == p.Fans
-                    && current.FanThickness == p.FanThickness && current.CoverHeight == coverHeight)
-                {
-                    current.Node.Position = p.Corner;
-                    continue;
-                }
-                Unmount(p.Id);
-            }
-            var node = new Node3D { Name = p.Id, Position = p.Corner };
-            _model.AddChild(node);
-            var model = new HardwareModel(_hardware, node);
-            if (p.Role == "panel")
-            {
-                var chassis = new Node3D { Position = Vector3.Down * coverHeight };
-                node.AddChild(chassis);
-                var kit = new HardwareModel(_hardware, chassis);
-                kit.Chassis(p.Extent, coverHeight);
-                if (liquid) BuildHoses(kit, report);
-                _panel = new MeshInstance3D
-                {
-                    Mesh = new BoxMesh { Size = p.Extent },
-                    MaterialOverride = GetMaterial("#8dbfc92d"),
-                    Position = p.Extent / 2,
-                    Visible = _showPanel
-                };
-                node.AddChild(_panel);
-            }
-            else model.Build(p);
-            _mounted[p.Id] = new(node, p.Extent, p.Rgb, p.Fans, p.FanThickness, coverHeight);
+            SetView(0);
+            _framedOnce = true;
         }
 
-        foreach (var child in _overlays.GetChildren()) { _overlays.RemoveChild(child); child.QueueFree(); }
-        var bad = report.Issues.SelectMany(issue => issue.Parts).ToHashSet();
-        foreach (var p in report.Parts.Where(p => bad.Contains(p.Id)))
+        var specs = BuildSpecs(report, catalog, setup);
+        foreach (var id in _mounted.Keys.ToArray())
         {
-            Box(p.Center, p.Extent + Vector3.One * .22f, "#ff5b4512");
-            Outline(p, "#ff6b5a");
+            var current = _mounted[id];
+            if (!specs.TryGetValue(id, out var spec))
+            {
+                Unmount(id);
+                continue;
+            }
+            if (spec.Path == current.Path && spec.Size == current.Size)
+            {
+                if (spec.Origin != current.Origin)
+                {
+                    current.Root.Position = spec.Origin;
+                    _mounted[id] = current with { Origin = spec.Origin };
+                }
+                continue;
+            }
+            Unmount(id);
         }
+
+        foreach (var spec in specs.Values)
+        {
+            if (_mounted.ContainsKey(spec.Id)) continue;
+            if (_hardware.TryCreate(spec.Path) is not { } instance)
+            {
+                ReportMissing(spec.Path);
+                continue;
+            }
+
+            var root = new Node3D { Name = spec.Id, Position = spec.Origin };
+            _model.AddChild(root);
+            root.AddChild(instance);
+            var model = new HardwareModel(instance);
+            if (!model.Fit(spec.Size, preserveHeight: spec.Role is "case" or "board",
+                    alignTop: spec.Role == "case"))
+            {
+                _model.RemoveChild(root);
+                root.QueueFree();
+                ReportMissing(spec.Path);
+                continue;
+            }
+
+            model.SetRgb(_rgb);
+            if (spec.Role == "case") model.SetSidePanelVisible(_showPanel);
+            _mounted[spec.Id] = new Mounted(spec.Path, spec.Origin, spec.Size, root, model);
+        }
+
+        BuildOverlays(report);
+    }
+
+    private Dictionary<string, MountSpec> BuildSpecs(FitResult report, BenchCatalog catalog, BenchSetup setup)
+    {
+        var specs = new Dictionary<string, MountSpec>(StringComparer.Ordinal);
+
+        var panel = report.Parts.FirstOrDefault(p => p.Role == "panel");
+        if (panel is not null && Resolve(catalog, setup, "panel") is { } casePath)
+        {
+            var (origin, size) = Envelope(report, panel);
+            specs["case"] = new MountSpec("case", "case", casePath, origin, size);
+        }
+
+        foreach (var part in report.Parts)
+        {
+            // 侧板由机箱模型的 SidePanel 节点承担；插槽通常烘焙在主板模型里，避免重复叠放。
+            // 处理器/存储默认同样烘焙在主板里，只有当规则结果为它们给出独立占位时才加装。
+            if (part.Role is "panel" or "slot") continue;
+            if (Resolve(catalog, setup, part.Role) is not { } path) continue;
+            specs[part.Id] = new MountSpec(part.Id, part.Role, path, Vector(part.Origin), Vector(part.Size));
+        }
+
+        AddAnchored("cpu", catalog.Board.ProcessorAnchor, Vector3.Zero);
+        AddAnchored("storage", catalog.Board.StorageAnchor, Vector3.Zero);
+        if (setup.Front360)
+        {
+            var supply = catalog.PowerSupplies[setup.PsuIndex];
+            AddAnchored("psu", catalog.Cases[setup.CaseIndex].PsuAnchor,
+                new Vector3(supply.Length, supply.Width, supply.Height));
+        }
+
+        return specs;
+
+        void AddAnchored(string role, float[]? anchor, Vector3 size)
+        {
+            if (anchor is { Length: 3 } && Resolve(catalog, setup, role) is { } path)
+                specs[role] = new MountSpec(role, role, path, Vector(anchor), size);
+        }
+    }
+
+    private static string? Resolve(BenchCatalog catalog, BenchSetup setup, string role)
+    {
+        try
+        {
+            return catalog.GetModelPath(setup, role);
+        }
+        catch (Exception ex)
+        {
+            GD.PushWarning($"解析硬件资产路径失败（{role}）：{ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>机箱可视包络：宽/深取侧板尺寸，高取侧板限高，下沿覆盖主板等负向构件。</summary>
+    private static (Vector3 Origin, Vector3 Size) Envelope(FitResult report, BenchPart panel)
+    {
+        float width = panel.Size[0];
+        float depth = panel.Size[2];
+        float top = panel.Origin[1];
+        float bottom = 0;
+        foreach (var part in report.Parts)
+            if (part.Role != "panel") bottom = Mathf.Min(bottom, part.Origin[1]);
+        return (new Vector3(0, bottom, 0), new Vector3(width, top - bottom, depth));
+    }
+
+    private void BuildOverlays(FitResult report)
+    {
+        foreach (var child in _overlays.GetChildren())
+        {
+            _overlays.RemoveChild(child);
+            child.QueueFree();
+        }
+
+        var bad = report.Issues.SelectMany(issue => issue.Parts).ToHashSet();
+        foreach (var part in report.Parts.Where(part => bad.Contains(part.Id)))
+        {
+            var extent = Vector(part.Size);
+            Box(Vector(part.Origin) + extent / 2, extent + Vector3.One * .22f, "#ff5b4512");
+            Outline(part, "#ff6b5a");
+        }
+
         foreach (var issue in report.Issues)
             if (issue.Overlap is { } overlap)
             {
-                Box(overlap.Center, overlap.Extent, "#ff3c39a8");
+                var extent = Vector(overlap.Size);
+                Box(Vector(overlap.Origin) + extent / 2, extent, "#ff3c39a8");
                 Outline(overlap, "#ffb4a6");
             }
     }
 
-    private void Unmount(string id)
+    private void ReportMissing(string path)
     {
-        var node = _mounted[id].Node;
-        _model.RemoveChild(node);
-        node.QueueFree();
-        _mounted.Remove(id);
+        if (_reportedMissing.Add(path))
+            GD.PushWarning($"硬件资产暂不可用，已跳过：{path}（资产就绪后自动加载）");
     }
 
-    private static void BuildHoses(HardwareModel kit, FitResult report)
+    private void Unmount(string id)
     {
-        var pump = report.Parts.First(p => p.Role == "pump");
-        var radiator = report.Parts.First(p => p.Role == "radiator");
-        for (int i = 0; i < 2; i++)
-        {
-            var start = pump.Center + new Vector3(12 * i - 6, 0, -pump.Extent.Z / 2);
-            var end = radiator.Corner + new Vector3(0, 22 + i * 18, 12);
-            kit.Pipe([start, start+new Vector3(4,16,-18), new Vector3(164,62+i*9,33-i*10),
-                end+new Vector3(-38,20,0),end], 6.5f);
-        }
+        if (!_mounted.Remove(id, out var mounted)) return;
+        if (!GodotObject.IsInstanceValid(mounted.Root)) return;
+        if (mounted.Root.GetParent() == _model) _model.RemoveChild(mounted.Root);
+        mounted.Root.QueueFree();
     }
 
     private StandardMaterial3D GetMaterial(string color)
@@ -240,6 +347,7 @@ public partial class BenchViewport : SubViewportContainer
 
     private void Outline(Volume bounds, string color)
     {
+        var extent = Vector(bounds.Size);
         var lines = new ImmediateMesh();
         lines.SurfaceBegin(Mesh.PrimitiveType.Lines);
         for (int i = 0; i < 8; i++)
@@ -248,14 +356,16 @@ public partial class BenchViewport : SubViewportContainer
             foreach (var axis in new[] { Vector3.Right, Vector3.Up, Vector3.Back })
             {
                 if (start.Dot(axis) != 0) continue;
-                lines.SurfaceAddVertex(start * bounds.Extent);
-                lines.SurfaceAddVertex((start + axis) * bounds.Extent);
+                lines.SurfaceAddVertex(start * extent);
+                lines.SurfaceAddVertex((start + axis) * extent);
             }
         }
         lines.SurfaceEnd();
         var mat = GetMaterial(color);
         mat.ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded;
         mat.NoDepthTest = true;
-        AddMesh(lines, bounds.Corner, mat);
+        AddMesh(lines, Vector(bounds.Origin), mat);
     }
+
+    private static Vector3 Vector(float[] xyz) => new(xyz[0], xyz[1], xyz[2]);
 }
